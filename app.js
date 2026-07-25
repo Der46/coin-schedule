@@ -8,7 +8,12 @@ let currentLang = localStorage.getItem("coin999_lang") || "zh-Hant";
 let I18N = {};
 let SCHEDULE_DICTIONARIES = {};
 
-const t = key => I18N[currentLang]?.[key] || I18N["zh-Hant"]?.[key] || key;
+const t = key => {
+    const currentPack = I18N[currentLang] || {};
+    const fallbackPack = I18N["zh-Hant"] || {};
+
+    return currentPack[key] || fallbackPack[key] || key;
+};
 
 const $ = id => document.getElementById(id);
 
@@ -34,7 +39,10 @@ const mobileSidebar = $("mobileSidebar");
 const mobileSidebarClose = $("mobileSidebarClose");
 const sidebarOverlay = $("sidebarOverlay");
 
-const pad2 = number => String(number).padStart(2, "0");
+const pad2 = number => {
+    const value = String(number);
+    return value.length >= 2 ? value : `0${value}`;
+};
 
 const SOURCE_TIMEZONE_OFFSET_MINUTES = 8 * 60;
 
@@ -54,16 +62,22 @@ const LANGUAGE_TIMEZONE_OFFSET_MINUTES = {
     "pt-BR": -3 * 60
 };
 
+const hasOwn = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
+
 function getBrowserTimezoneOffsetMinutes() {
     return -new Date().getTimezoneOffset();
 }
 
 function getCurrentTimezoneOffsetMinutes() {
-    return LANGUAGE_TIMEZONE_OFFSET_MINUTES[currentLang] ?? getBrowserTimezoneOffsetMinutes();
+    if (hasOwn(LANGUAGE_TIMEZONE_OFFSET_MINUTES, currentLang)) {
+        return LANGUAGE_TIMEZONE_OFFSET_MINUTES[currentLang];
+    }
+
+    return getBrowserTimezoneOffsetMinutes();
 }
 
 function isUsingBrowserTimezone() {
-    return !(currentLang in LANGUAGE_TIMEZONE_OFFSET_MINUTES);
+    return !hasOwn(LANGUAGE_TIMEZONE_OFFSET_MINUTES, currentLang);
 }
 
 function getTimezoneLabel() {
@@ -88,7 +102,9 @@ function indexToCommand(index) {
 }
 
 function convertSourceTimeToCurrentTimezone(time, sourceCommand) {
-    const [hour, minute] = String(time).split(":").map(Number);
+    const timeParts = String(time).split(":").map(Number);
+    const hour = timeParts[0];
+    const minute = timeParts[1];
 
     const sourceTotalMinutes = hour * 60 + minute;
     const diff = getCurrentTimezoneOffsetMinutes() - SOURCE_TIMEZONE_OFFSET_MINUTES;
@@ -179,7 +195,10 @@ const findItemByCommand = command => {
 };
 
 const normalizeTime = time => {
-    const [hour, minute] = String(time).split(":");
+    const parts = String(time).split(":");
+    const hour = parts[0];
+    const minute = parts[1];
+
     return `${pad2(Number(hour))}:${pad2(Number(minute))}`;
 };
 
@@ -260,9 +279,10 @@ function translateScheduleText(text) {
 
     let result = String(text || "");
 
-    Object.entries(dictionary)
-        .sort((a, b) => b[0].length - a[0].length)
-        .forEach(([from, to]) => {
+    Object.keys(dictionary)
+        .sort((a, b) => b.length - a.length)
+        .forEach(from => {
+            const to = dictionary[from];
             result = result.split(from).join(to);
         });
 
@@ -297,7 +317,11 @@ function getItemDescription(item) {
     return getLocalizedValue(item.description);
 }
 
-function applyI18n() {
+function applyI18n(options = {}) {
+    const shouldRenderCurrentItem = hasOwn(options, "renderCurrentItem")
+        ? options.renderCurrentItem
+        : true;
+
     document.documentElement.lang = currentLang;
     document.title = t("pageTitle");
 
@@ -316,91 +340,87 @@ function applyI18n() {
 
     updateWeekdayButtons(selectedCommand || getWeekdayCommandByDate());
 
-    if (currentSelected) {
+    if (shouldRenderCurrentItem && currentSelected) {
         selectItem(currentSelected, false);
     }
 }
 
-async function loadJsonFile(url, fallbackValue) {
-    try {
-        const response = await fetch(url, { cache: "no-store" });
+function loadJsonFile(url, fallbackValue) {
+    return fetch(url, { cache: "no-store" })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`${url} HTTP ${response.status}`);
+            }
 
-        if (!response.ok) {
-            throw new Error(`${url} HTTP ${response.status}`);
-        }
-
-        return await response.json();
-    } catch (error) {
-        console.error(`[JSON Load Failed] ${url}`, error);
-        return fallbackValue;
-    }
+            return response.json();
+        })
+        .catch(error => {
+            console.error(`[JSON Load Failed] ${url}`, error);
+            return fallbackValue;
+        });
 }
 
-async function loadSettings() {
-    const [i18nData, dictionaryData] = await Promise.all([
+function loadSettings() {
+    return Promise.all([
         loadJsonFile("i18n.json", {}),
         loadJsonFile("schedule-dictionaries.json", {})
-    ]);
+    ]).then(results => {
+        const i18nData = results[0];
+        const dictionaryData = results[1];
 
-    I18N = i18nData && typeof i18nData === "object" ? i18nData : {};
-    SCHEDULE_DICTIONARIES = dictionaryData && typeof dictionaryData === "object" ? dictionaryData : {};
+        I18N = i18nData && typeof i18nData === "object" ? i18nData : {};
+        SCHEDULE_DICTIONARIES = dictionaryData && typeof dictionaryData === "object" ? dictionaryData : {};
 
-    if (!I18N[currentLang]) {
-        currentLang = "zh-Hant";
-        localStorage.setItem("coin999_lang", currentLang);
-    }
+        if (!I18N[currentLang]) {
+            currentLang = "zh-Hant";
+            localStorage.setItem("coin999_lang", currentLang);
+        }
+    });
 }
 
-async function loadData() {
-    try {
-        detailEmpty.innerHTML = `
-                <div class="loading-box">
-                    ${escapeHtml(t("loadingData"))}<br />
-                    ${escapeHtml(t("readingData"))} <strong>data.json</strong>
-                </div>
-            `;
+function loadData() {
+    detailEmpty.innerHTML = `
+        <div class="loading-box">
+            ${escapeHtml(t("loadingData"))}<br />
+            ${escapeHtml(t("readingData"))} <strong>data.json</strong>
+        </div>
+    `;
 
-        const jsonData = await loadJsonFile("data.json", null);
+    return loadJsonFile("data.json", null)
+        .then(jsonData => {
+            if (!jsonData) {
+                throw new Error("data.json load failed");
+            }
 
-        if (!jsonData) {
-            throw new Error("data.json load failed");
-        }
+            if (!Array.isArray(jsonData)) {
+                throw new Error(t("jsonFormatError"));
+            }
 
-        if (!Array.isArray(jsonData)) {
-            throw new Error(t("jsonFormatError"));
-        }
+            DATA = jsonData.map(item => ({
+                command: item.command || "",
+                title: item.title || "",
+                type: item.type || "schedule",
+                description: item.description || ""
+            }));
 
-        DATA = jsonData.map(item => ({
-            command: item.command || "",
-            title: item.title || "",
-            type: item.type || "schedule",
-            description: item.description || ""
-        }));
+            dataLoaded = true;
+            selectTodayForCurrentLanguageTimezone(false);
+        })
+        .catch(error => {
+            dataLoaded = false;
+            DATA = [];
 
-        dataLoaded = true;
+            detailEmpty.style.display = "block";
+            detailBox.classList.remove("show");
 
-        const todayCommand = getWeekdayCommandByDate();
-
-        selectWeekdayCommand(todayCommand, {
-            scrollToDetail: false,
-            toastMessage: ""
-        });
-
-    } catch (error) {
-        dataLoaded = false;
-        DATA = [];
-
-        detailEmpty.style.display = "block";
-        detailBox.classList.remove("show");
-
-        detailEmpty.innerHTML = `
+            detailEmpty.innerHTML = `
                 <div class="error-box">
                     <strong>${escapeHtml(t("dataLoadFailed"))}</strong><br />
                     ${escapeHtml(t("dataLoadHint"))}<br />
                     <span>${escapeHtml(error.message)}</span>
                 </div>
             `;
-    }
+        });
 }
 
 function updateWeekdayButtons(command) {
@@ -440,18 +460,40 @@ function selectWeekdayCommand(command, options = {}) {
         return;
     }
 
+    const scrollToDetail = hasOwn(options, "scrollToDetail")
+        ? options.scrollToDetail
+        : false;
+
     updateWeekdayButtons(command);
-    selectItem(item, options.scrollToDetail ?? false);
+    selectItem(item, scrollToDetail);
 
     if (options.toastMessage) {
         showToast(options.toastMessage);
     }
 }
 
-const parseDuration = text => {
-    const matches = [...String(text).matchAll(/[（(]([^）)]+)[）)]/g)];
+function selectTodayForCurrentLanguageTimezone(showToastMessage = false) {
+    const timezoneTodayCommand = getWeekdayCommandByDate();
 
-    for (const match of matches) {
+    if (!dataLoaded) {
+        updateWeekdayButtons(timezoneTodayCommand);
+        return;
+    }
+
+    selectWeekdayCommand(timezoneTodayCommand, {
+        scrollToDetail: false,
+        toastMessage: showToastMessage
+            ? `${t("switchedTo")}：${getCommandLabel(timezoneTodayCommand)}${t("activity")}｜${getTimezoneLabel()}`
+            : ""
+    });
+}
+
+const parseDuration = text => {
+    const value = String(text);
+    const regex = /[（(]([^）)]+)[）)]/g;
+    let match;
+
+    while ((match = regex.exec(value)) !== null) {
         const inside = match[1].trim();
 
         const isDuration =
@@ -674,10 +716,10 @@ function renderScheduleView(item) {
 
     if (!eventsForDisplay.length) {
         scheduleView.innerHTML = `
-                <div class="no-result">
-                    ${escapeHtml(t("noSchedule"))}
-                </div>
-            `;
+            <div class="no-result">
+                ${escapeHtml(t("noSchedule"))}
+            </div>
+        `;
         return;
     }
 
@@ -707,70 +749,70 @@ function renderScheduleView(item) {
                 : "";
 
             return `
-                    <div class="event-cell-row">
-                        <span class="event-start">${escapeHtml(event.time)}~</span>
-                        <span class="event-badge ${escapeHtml(event.category)}">${escapeHtml(getCategoryLabel(event.category))}</span>
-                        <div class="event-title-wrap">
-                            <div class="event-name">${escapeHtml(event.name)}</div>
-                            ${event.note ? `<div class="event-note">${escapeHtml(event.note)}</div>` : ""}
-                            ${sourceHint}
-                        </div>
+                <div class="event-cell-row">
+                    <span class="event-start">${escapeHtml(event.time)}~</span>
+                    <span class="event-badge ${escapeHtml(event.category)}">${escapeHtml(getCategoryLabel(event.category))}</span>
+                    <div class="event-title-wrap">
+                        <div class="event-name">${escapeHtml(event.name)}</div>
+                        ${event.note ? `<div class="event-note">${escapeHtml(event.note)}</div>` : ""}
+                        ${sourceHint}
                     </div>
-                `;
+                </div>
+            `;
         }).join("") : `<div class="empty-event-row"></div>`;
 
         const durationRows = events.length ? events.map(event => `
-                <div class="duration-cell-row">${event.durationText ? escapeHtml(event.durationText) : ""}</div>
-            `).join("") : `<div class="empty-duration-row"></div>`;
+            <div class="duration-cell-row">${event.durationText ? escapeHtml(event.durationText) : ""}</div>
+        `).join("") : `<div class="empty-duration-row"></div>`;
 
         return `
-                <div class="schedule-hour-row ${isCurrent ? "current-hour" : ""}">
-                    <div class="hour-time-cell">${hour}:00~</div>
-                    <div class="hour-events-cell">${eventRows}</div>
-                    <div class="hour-duration-cell">${durationRows}</div>
-                </div>
-            `;
+            <div class="schedule-hour-row ${isCurrent ? "current-hour" : ""}">
+                <div class="hour-time-cell">${hour}:00~</div>
+                <div class="hour-events-cell">${eventRows}</div>
+                <div class="hour-duration-cell">${durationRows}</div>
+            </div>
+        `;
     }).join("");
 
     scheduleView.innerHTML = `
-            <div class="schedule-summary">
-                <div class="summary-card">
-                    <div class="summary-label">${escapeHtml(t("eventCount"))}</div>
-                    <div class="summary-value">${eventsForDisplay.length}</div>
-                </div>
-                <div class="summary-card">
-                    <div class="summary-label">${escapeHtml(t("firstEvent"))}</div>
-                    <div class="summary-value">${escapeHtml(firstEvent.time)}</div>
-                </div>
-                <div class="summary-card">
-                    <div class="summary-label">${escapeHtml(t("lastEvent"))}</div>
-                    <div class="summary-value">${escapeHtml(lastEvent.time)}</div>
-                </div>
-                <div class="summary-card">
-                    <div class="summary-label">${escapeHtml(t("currentPeriod"))}</div>
-                    <div class="summary-value">${isSelectedToday ? `${currentHour}:00` : "-"}</div>
-                </div>
+        <div class="schedule-summary">
+            <div class="summary-card">
+                <div class="summary-label">${escapeHtml(t("eventCount"))}</div>
+                <div class="summary-value">${eventsForDisplay.length}</div>
             </div>
+            <div class="summary-card">
+                <div class="summary-label">${escapeHtml(t("firstEvent"))}</div>
+                <div class="summary-value">${escapeHtml(firstEvent.time)}</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">${escapeHtml(t("lastEvent"))}</div>
+                <div class="summary-value">${escapeHtml(lastEvent.time)}</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">${escapeHtml(t("currentPeriod"))}</div>
+                <div class="summary-value">${isSelectedToday ? `${currentHour}:00` : "-"}</div>
+            </div>
+        </div>
 
-            <div class="schedule-shell" id="scheduleShell">
-                <div class="schedule-fit" id="scheduleFit">
-                    <div class="schedule-board" id="scheduleBoard">
-                        <div class="schedule-board-head">
-                            <div class="schedule-head-cell">${escapeHtml(t("time"))}</div>
-                            <div class="schedule-head-cell">
-                                <div>
-                                    <div>${escapeHtml(headerTitle)}</div>
-                                    ${updateText ? `<div class="schedule-update">${escapeHtml(updateText)}</div>` : ""}
-                                </div>
+        <div class="schedule-shell" id="scheduleShell">
+            <div class="schedule-fit" id="scheduleFit">
+                <div class="schedule-board" id="scheduleBoard">
+                    <div class="schedule-board-head">
+                        <div class="schedule-head-cell">${escapeHtml(t("time"))}</div>
+                        <div class="schedule-head-cell">
+                            <div>
+                                <div>${escapeHtml(headerTitle)}</div>
+                                ${updateText ? `<div class="schedule-update">${escapeHtml(updateText)}</div>` : ""}
                             </div>
-                            <div class="schedule-head-cell">${escapeHtml(t("duration"))}</div>
                         </div>
-
-                        ${rows}
+                        <div class="schedule-head-cell">${escapeHtml(t("duration"))}</div>
                     </div>
+
+                    ${rows}
                 </div>
             </div>
-        `;
+        </div>
+    `;
 
     requestAnimationFrame(() => {
         fitScheduleBoard();
@@ -888,7 +930,12 @@ function bindEvents() {
         languageSelect.addEventListener("change", () => {
             currentLang = languageSelect.value;
             localStorage.setItem("coin999_lang", currentLang);
-            applyI18n();
+
+            applyI18n({
+                renderCurrentItem: false
+            });
+
+            selectTodayForCurrentLanguageTimezone(true);
         });
     }
 
@@ -949,18 +996,23 @@ function bindEvents() {
     });
 }
 
-document.addEventListener("DOMContentLoaded", async () => {
+document.addEventListener("DOMContentLoaded", () => {
     if (copyrightYear) {
         copyrightYear.textContent = new Date().getFullYear();
     }
 
-    await loadSettings();
+    loadSettings()
+        .then(() => {
+            if (languageSelect) {
+                languageSelect.value = currentLang;
+            }
 
-    if (languageSelect) {
-        languageSelect.value = currentLang;
-    }
+            applyI18n();
+            bindEvents();
 
-    applyI18n();
-    bindEvents();
-    loadData();
+            return loadData();
+        })
+        .catch(error => {
+            console.error("[App Init Failed]", error);
+        });
 });
