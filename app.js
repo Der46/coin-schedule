@@ -35,6 +35,7 @@ const weekdaySubtitle = $("weekdaySubtitle");
 
 const mobileMenuBtn = $("mobileMenuBtn");
 const desktopToolBtn = $("desktopToolBtn");
+const installAppBtn = $("installAppBtn");
 const mobileSidebar = $("mobileSidebar");
 const mobileSidebarClose = $("mobileSidebarClose");
 const sidebarOverlay = $("sidebarOverlay");
@@ -975,6 +976,10 @@ function bindEvents() {
         desktopToolBtn.addEventListener("click", openSidebar);
     }
 
+    if (installAppBtn) {
+        installAppBtn.addEventListener("click", handleInstallAppClick);
+    }
+
     if (mobileSidebarClose) {
         mobileSidebarClose.addEventListener("click", closeSidebar);
     }
@@ -1015,4 +1020,94 @@ document.addEventListener("DOMContentLoaded", () => {
         .catch(error => {
             console.error("[App Init Failed]", error);
         });
+});
+
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./service-worker.js").catch(error => {
+            console.error("Service Worker registration failed:", error);
+        });
+    });
+}
+let deferredInstallPrompt = null;
+
+function isStandaloneMode() {
+    return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+
+function isIosDevice() {
+    return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+}
+
+function isSafariBrowser() {
+    return /^((?!chrome|android).)*safari/i.test(window.navigator.userAgent);
+}
+
+function showInstallButton() {
+    if (!installAppBtn) return;
+
+    if (isStandaloneMode()) {
+        installAppBtn.classList.remove("is-visible");
+        return;
+    }
+
+    installAppBtn.classList.add("is-visible");
+}
+
+function hideInstallButton() {
+    if (!installAppBtn) return;
+
+    installAppBtn.classList.remove("is-visible");
+}
+
+async function handleInstallAppClick() {
+    if (isStandaloneMode()) {
+        hideInstallButton();
+        return;
+    }
+
+    if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+
+        const choiceResult = await deferredInstallPrompt.userChoice;
+        deferredInstallPrompt = null;
+
+        if (choiceResult.outcome === "accepted") {
+            hideInstallButton();
+            showToast(t("installingApp"));
+        }
+
+        return;
+    }
+
+    if (isIosDevice() && isSafariBrowser()) {
+        showToast(t("iosInstallHint"));
+        return;
+    }
+
+    showToast(t("browserInstallHint"));
+}
+
+window.addEventListener("beforeinstallprompt", event => {
+    event.preventDefault();
+
+    deferredInstallPrompt = event;
+    showInstallButton();
+});
+
+window.addEventListener("appinstalled", () => {
+    deferredInstallPrompt = null;
+    hideInstallButton();
+    showToast(t("appInstalled"));
+});
+
+window.addEventListener("load", () => {
+    if (isStandaloneMode()) {
+        hideInstallButton();
+        return;
+    }
+
+    if (isIosDevice() && isSafariBrowser()) {
+        showInstallButton();
+    }
 });

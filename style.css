@@ -100,6 +100,38 @@ select {
     box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
 }
 
+.install-app-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 16px;
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 950;
+    line-height: 1;
+    white-space: nowrap;
+    background: linear-gradient(135deg, #10b981, #059669);
+    border: none;
+    border-radius: 999px;
+    box-shadow: 0 12px 28px rgba(5, 150, 105, 0.22);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.install-app-btn.is-visible {
+    display: inline-flex;
+}
+
+.install-app-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 16px 34px rgba(5, 150, 105, 0.28);
+}
+
+.install-app-btn:active {
+    transform: translateY(0);
+}
+
 .top-tool-btn {
     padding: 10px 16px;
     color: #fff;
@@ -725,7 +757,19 @@ select {
     .hero-actions {
         position: static;
         justify-content: center;
+        flex-wrap: wrap;
         margin-bottom: 14px;
+    }
+
+    .language-select,
+    .install-app-btn,
+    .top-tool-btn {
+        min-height: 42px;
+    }
+
+    .install-app-btn {
+        padding: 10px 14px;
+        font-size: 14px;
     }
 
     .top-tool-btn {

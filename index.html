@@ -4,7 +4,19 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
     <title>活動時刻表</title>
+
+    <meta name="description" content="活動時間表與工具連結" />
+    <meta name="theme-color" content="#6366f1" />
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="活動時刻表" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+
     <link rel="stylesheet" href="style.css" />
     <script src="app.js" defer></script>
 </head>
@@ -76,6 +88,10 @@
                     <option value="es">Español</option>
                     <option value="pt-BR">Português</option>
                 </select>
+
+                <button id="installAppBtn" class="install-app-btn" type="button" data-i18n="installApp">
+                    ⬇️ 安裝APP
+                </button>
 
                 <button id="desktopToolBtn" class="top-tool-btn" type="button" data-i18n="toolLinksButton">
                     ☰ 工具連結
