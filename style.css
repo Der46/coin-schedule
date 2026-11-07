@@ -1,16 +1,25 @@
 :root {
-    --bg: #f6f7fb;
+    --bg: #f1ecfa;
     --card: #ffffff;
-    --text: #111827;
-    --muted: #6b7280;
-    --primary: #6366f1;
-    --primary-dark: #4f46e5;
+    --text: #231638;
+    --muted: #6c5f86;
+    --primary: #5b2fa8;
+    --primary-dark: #44207f;
     --border: #d8d8d8;
-    --soft-border: #e5e7eb;
+    --soft-border: #e4dcf2;
     --danger: #ff1d1d;
-    --shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
-    --radius: 18px;
+    --shadow: 0 1px 0 #e4dcf2, 0 10px 24px rgba(43, 22, 80, 0.07);
+    --radius: 20px;
     --transition-fast: 0.18s ease;
+
+    /* Coin Master palette: twilight plum cabinet + coin gold */
+    --plum: #2b1650;
+    --plum-2: #3d1f6e;
+    --gold: #f6b91e;
+    --gold-hi: #ffd95a;
+    --gold-deep: #b87a00;
+    --live: #e0313b;
+    --ledge: #ddd2f0;
 }
 
 * {
@@ -37,9 +46,13 @@ body {
         Arial,
         sans-serif;
     background:
-        radial-gradient(circle at top left, #eef2ff 0, transparent 32%),
-        radial-gradient(circle at bottom right, #fdf2f8 0, transparent 30%),
+        radial-gradient(120% 60% at 50% 0, #e6dcf7 0, transparent 60%),
         var(--bg);
+}
+
+:focus-visible {
+    outline: 3px solid var(--gold);
+    outline-offset: 2px;
 }
 
 body.sidebar-open {
@@ -56,50 +69,122 @@ select {
     margin: 0 auto;
 }
 
+/* ---------- Hero: the "slot cabinet" top, fused with the now card ---------- */
+
 .hero {
-    display: flex;
-    flex-direction: column;
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    margin: 32px 0 24px;
-    text-align: center;
+    gap: 16px 24px;
+    margin: 8px 0 0;
+    padding: 28px 28px 24px;
+    color: #fff;
+    background:
+        radial-gradient(70% 120% at 0 0, rgba(255, 217, 90, 0.16) 0, transparent 60%),
+        radial-gradient(50% 90% at 100% 0, rgba(224, 49, 59, 0.16) 0, transparent 70%),
+        linear-gradient(180deg, var(--plum-2) 0%, var(--plum) 100%);
+    border: 3px solid var(--gold);
+    border-bottom: none;
+    border-radius: 26px 26px 0 0;
+}
+
+/* When the now card is empty the cabinet closes itself. */
+.hero:has(+ .now-card:empty) {
+    border-bottom: 3px solid var(--gold);
+    border-radius: 26px;
+    margin-bottom: 22px;
+    box-shadow: 0 6px 0 var(--gold-deep), 0 18px 36px rgba(43, 22, 80, 0.25);
+}
+
+.hero-title {
+    grid-row: 1;
+    grid-column: 1;
+    min-width: 0;
 }
 
 .hero h1 {
-    text-wrap: balance;
-    width: 100%;
     margin: 0;
-    font-size: clamp(28px, 5vw, 44px);
+    color: var(--gold-hi);
+    font-size: clamp(32px, 6vw, 52px);
+    font-weight: 950;
+    line-height: 1.1;
+    letter-spacing: 0.06em;
+    text-wrap: balance;
+    background: linear-gradient(180deg, #fff3b8 0%, var(--gold-hi) 38%, var(--gold) 62%, #e39a07 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 3px 0 #6b3d00) drop-shadow(0 8px 14px rgba(0, 0, 0, 0.35));
+}
+
+.hero-credit {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 14px 0 0;
+    padding: 5px 14px 5px 6px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 900;
     letter-spacing: 0.04em;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1.5px solid rgba(246, 185, 30, 0.7);
+    border-radius: 999px;
+}
+
+.hero-credit-coin {
+    display: inline-grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    color: #6b3d00;
+    font-size: 12px;
+    font-weight: 950;
+    background: radial-gradient(circle at 35% 30%, #fff3b8 0, var(--gold) 55%, var(--gold-deep) 100%);
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 2px rgba(107, 61, 0, 0.35);
 }
 
 .hero-actions {
     display: flex;
+    grid-row: 1;
+    grid-column: 2;
     flex-direction: column;
     align-items: stretch;
-    align-self: flex-end;
     gap: 10px;
-    min-width: 150px;
-    margin-bottom: 16px;
+    min-width: 170px;
 }
 
 .language-select {
     width: 100%;
     min-width: 150px;
-    padding: 10px 12px;
-    color: #374151;
+    min-height: 42px;
+    padding: 10px 14px;
+    color: #fff;
     font-size: 14px;
     font-weight: 900;
-    background: #fff;
-    border: 1px solid var(--soft-border);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1.5px solid rgba(255, 255, 255, 0.28);
     border-radius: 999px;
-    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
     outline: none;
     cursor: pointer;
+    transition-property: background-color, border-color;
+    transition-duration: 150ms;
 }
 
-.language-select:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+.language-select:hover {
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.language-select option {
+    color: var(--text);
+    background: #fff;
+}
+
+.language-select:focus-visible {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(246, 185, 30, 0.35);
 }
 
 .install-app-btn {
@@ -108,16 +193,17 @@ select {
     justify-content: center;
     gap: 6px;
     width: 100%;
+    min-height: 42px;
     padding: 10px 16px;
-    color: #ffffff;
+    color: #4a2a00;
     font-size: 15px;
     font-weight: 950;
     line-height: 1;
     white-space: nowrap;
-    background: linear-gradient(135deg, #10b981, #059669);
+    background: linear-gradient(180deg, var(--gold-hi), var(--gold));
     border: none;
     border-radius: 999px;
-    box-shadow: 0 12px 28px rgba(5, 150, 105, 0.22);
+    box-shadow: 0 3px 0 var(--gold-deep);
     cursor: pointer;
     transition-property: color, background-color, border-color, box-shadow, transform;
     transition-duration: 180ms;
@@ -129,43 +215,42 @@ select {
 }
 
 .install-app-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 16px 34px rgba(5, 150, 105, 0.28);
+    background: linear-gradient(180deg, #ffe382, var(--gold-hi));
 }
 
 .install-app-btn:active {
-    transform: translateY(0);
+    transform: translateY(3px);
+    box-shadow: 0 0 0 var(--gold-deep);
 }
 
 .top-tool-btn {
     width: 100%;
+    min-height: 42px;
     padding: 10px 16px;
     color: #fff;
     font-size: 15px;
     font-weight: 950;
     white-space: nowrap;
-    background: var(--primary);
-    border: none;
+    background: transparent;
+    border: 1.5px solid rgba(255, 255, 255, 0.28);
     border-radius: 999px;
-    box-shadow: 0 12px 28px rgba(79, 70, 229, 0.22);
     cursor: pointer;
-    transition-property: color, background-color, border-color, box-shadow, transform;
-    transition-duration: 180ms;
+    transition-property: color, background-color, border-color;
+    transition-duration: 150ms;
     transition-timing-function: ease-out;
 }
 
 .top-tool-btn:hover {
-    background: var(--primary-dark);
-    transform: translateY(-1px);
+    color: var(--gold-hi);
+    border-color: var(--gold);
 }
 
 .weekday-card,
 .panel {
-    background: rgba(255, 255, 255, 0.92);
-    border: 1px solid rgba(255, 255, 255, 0.75);
+    background: #fff;
+    border: 1px solid var(--soft-border);
     border-radius: var(--radius);
     box-shadow: var(--shadow);
-    backdrop-filter: blur(14px);
 }
 
 .weekday-card {
@@ -206,40 +291,50 @@ select {
     align-items: center;
     justify-content: center;
     gap: 4px;
+    position: relative;
     min-height: 72px;
     padding: 10px 8px;
-    color: #374151;
+    color: #4a3d63;
     font-weight: 950;
-    background: #fff;
-    border: 1px solid var(--soft-border);
+    background: #f7f3fd;
+    border: 1.5px solid var(--ledge);
     border-radius: 16px;
+    box-shadow: 0 4px 0 var(--ledge);
     cursor: pointer;
     transition-property: color, background-color, border-color, box-shadow, transform;
-    transition-duration: 180ms;
+    transition-duration: 120ms;
     transition-timing-function: ease-out;
 }
 
 .weekday-btn:hover {
     color: var(--primary-dark);
-    background: #eef2ff;
-    border-color: var(--primary);
-    transform: translateY(-1px);
+    background: #fff;
+    border-color: #c4aeea;
+}
+
+.weekday-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 0 0 var(--ledge);
 }
 
 .weekday-btn.active {
-    color: #fff;
-    background: var(--primary);
-    border-color: var(--primary);
-    box-shadow: 0 10px 22px rgba(99, 102, 241, 0.2);
+    color: #4a2a00;
+    background: linear-gradient(180deg, var(--gold-hi), var(--gold));
+    border-color: var(--gold-deep);
+    box-shadow: 0 4px 0 var(--gold-deep);
 }
 
-.weekday-btn.today {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
-}
-
-.weekday-btn.active.today {
-    box-shadow: 0 10px 22px rgba(99, 102, 241, 0.25);
+/* Today: a small red "live" pip, independent of which day is selected. */
+.weekday-btn.today::after {
+    content: "";
+    position: absolute;
+    top: 7px;
+    right: 7px;
+    width: 8px;
+    height: 8px;
+    background: var(--live);
+    border: 2px solid #fff;
+    border-radius: 50%;
 }
 
 .weekday-main {
@@ -304,16 +399,16 @@ select {
     padding: 8px 12px;
     color: var(--primary-dark);
     font-weight: 950;
-    background: #eef2ff;
+    background: #f1eafb;
     border-radius: 999px;
 }
 
 .today-badge {
     padding: 8px 12px;
-    color: #0e7490;
+    color: #7a4d00;
     font-size: 14px;
     font-weight: 950;
-    background: #ecfeff;
+    background: #fff3cf;
     border-radius: 999px;
 }
 
@@ -326,16 +421,25 @@ select {
 /* ---------- Now card ---------- */
 
 .now-card {
-    margin-bottom: 22px;
-    padding: 18px 20px 20px;
+    margin-top: -1px;
+    margin-bottom: 26px;
+    padding: 18px 28px 26px;
     color: #fff;
-    background:
-        radial-gradient(circle at 100% 0, rgba(255, 255, 255, 0.14) 0, transparent 42%),
-        linear-gradient(135deg, #4f46e5 0%, #6d28d9 100%);
-    border-radius: var(--radius);
-    box-shadow:
-        0 1px 2px rgba(49, 46, 129, 0.2),
-        0 16px 36px rgba(79, 70, 229, 0.24);
+    background: var(--plum);
+    border: 3px solid var(--gold);
+    border-top: none;
+    border-radius: 0 0 26px 26px;
+    box-shadow: 0 6px 0 var(--gold-deep), 0 18px 36px rgba(43, 22, 80, 0.25);
+}
+
+/* Seam between the title area and the live area: a row of coin studs. */
+.now-card::before {
+    content: "";
+    display: block;
+    height: 6px;
+    margin: 0 -4px 18px;
+    background: radial-gradient(circle, var(--gold) 2.5px, transparent 3px) 0 50% / 18px 6px repeat-x;
+    opacity: 0.55;
 }
 
 .now-card:empty {
@@ -361,6 +465,7 @@ select {
 }
 
 .now-clock {
+    color: var(--gold-hi);
     font-size: 30px;
     font-variant-numeric: tabular-nums;
     letter-spacing: 0.02em;
@@ -381,9 +486,9 @@ select {
 .now-col {
     min-width: 0;
     padding: 12px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
 }
 
 .now-subtitle {
@@ -405,7 +510,7 @@ select {
 .now-count {
     min-width: 22px;
     padding: 1px 7px;
-    color: #4f46e5;
+    color: #44207f;
     font-size: 12px;
     text-align: center;
     background: #fff;
@@ -449,7 +554,7 @@ select {
 }
 
 .now-item-left {
-    color: #dc2626;
+    color: var(--live);
     font-size: 14px;
     font-weight: 950;
     white-space: nowrap;
@@ -460,14 +565,14 @@ select {
     height: 6px;
     margin: 8px 0 6px;
     overflow: hidden;
-    background: #eef2ff;
+    background: #f1eafb;
     border-radius: 999px;
 }
 
 .now-progress span {
     display: block;
     height: 100%;
-    background: linear-gradient(90deg, #6366f1, #ec4899);
+    background: linear-gradient(90deg, var(--gold), var(--live));
     border-radius: inherit;
     transition: width 400ms ease-out;
 }
@@ -623,7 +728,7 @@ select {
 }
 
 .filter-chip {
-    --chip: #6366f1;
+    --chip: #5b2fa8;
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -672,7 +777,7 @@ select {
 
 .filter-chip:focus-visible,
 .hide-ended-toggle:focus-within {
-    outline: 3px solid rgba(99, 102, 241, 0.35);
+    outline: 3px solid rgba(91, 47, 168, 0.35);
     outline-offset: 2px;
 }
 
@@ -746,13 +851,13 @@ select {
 .cat-card { --cat: #7c3aed; --chip: #7c3aed; }
 .cat-mission { --cat: #db2777; --chip: #db2777; }
 .cat-default { --cat: #64748b; --chip: #64748b; }
-.filter-chip.cat-all { --chip: #6366f1; }
+.filter-chip.cat-all { --chip: #5b2fa8; }
 
 .ev.is-live {
-    border-color: #a5b4fc;
+    border-color: #c4aeea;
     box-shadow:
-        0 0 0 3px rgba(99, 102, 241, 0.12),
-        0 8px 20px rgba(79, 70, 229, 0.1);
+        0 0 0 3px rgba(91, 47, 168, 0.12),
+        0 8px 20px rgba(68, 32, 127, 0.1);
 }
 
 .ev.is-ended {
@@ -923,7 +1028,7 @@ select {
 }
 
 .ev-status.is-soon {
-    color: #4f46e5;
+    color: #44207f;
 }
 
 .ev-status.is-ended,
@@ -1012,7 +1117,7 @@ select {
 }
 
 .ev-cal-btn:hover {
-    background: #eef2ff;
+    background: #f1eafb;
     border-color: var(--primary);
 }
 
@@ -1023,7 +1128,7 @@ select {
 .ev-cal-btn:focus-visible,
 .cal-action:focus-visible,
 .cal-close:focus-visible {
-    outline: 3px solid rgba(99, 102, 241, 0.35);
+    outline: 3px solid rgba(91, 47, 168, 0.35);
     outline-offset: 2px;
 }
 
@@ -1206,7 +1311,7 @@ select {
 
 .raw-description-toggle:hover {
     color: var(--primary-dark);
-    background: #eef2ff;
+    background: #f1eafb;
     border-color: var(--primary);
     transform: translateY(-1px);
 }
@@ -1253,13 +1358,24 @@ select {
 }
 
 .site-footer {
-    margin: 28px 0 12px;
-    padding: 18px 12px;
+    margin: 32px 0 12px;
+    padding: 20px 12px 8px;
     color: var(--muted);
     font-size: 14px;
     font-weight: 700;
     line-height: 1.6;
     text-align: center;
+    border-top: 1px dashed #d6c9ee;
+}
+
+.site-footer p {
+    margin: 4px 0;
+}
+
+.footer-credit {
+    color: var(--plum);
+    font-weight: 950;
+    letter-spacing: 0.04em;
 }
 
 .mobile-menu-btn {
@@ -1273,10 +1389,10 @@ select {
     font-family: inherit;
     font-size: 15px;
     font-weight: 950;
-    background: var(--primary);
-    border: none;
+    background: var(--plum);
+    border: 2px solid var(--gold);
     border-radius: 999px;
-    box-shadow: 0 12px 28px rgba(79, 70, 229, 0.28);
+    box-shadow: 0 4px 0 var(--gold-deep), 0 12px 28px rgba(43, 22, 80, 0.3);
     cursor: pointer;
 }
 
@@ -1350,7 +1466,7 @@ select {
 
 .mobile-tool-nav a:hover {
     color: var(--primary-dark);
-    background: #eef2ff;
+    background: #f1eafb;
     border-color: var(--primary);
     transform: translateY(-1px);
 }
@@ -1363,7 +1479,7 @@ select {
     width: 34px;
     height: 34px;
     font-size: 20px;
-    background: #eef2ff;
+    background: #f1eafb;
     border-radius: 10px;
 }
 
@@ -1416,23 +1532,38 @@ select {
     }
 
     .hero {
-        margin: 22px 0 18px;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+        margin: 4px 0 0;
+        padding: 22px 18px 18px;
+        text-align: center;
+        border-radius: 22px 22px 0 0;
+    }
+
+    .hero:has(+ .now-card:empty) {
+        border-radius: 22px;
     }
 
     .hero-actions {
-        align-self: center;
-        align-items: stretch;
-        width: min(100%, 220px);
+        grid-row: 2;
+        grid-column: 1;
+        flex-direction: row;
+        justify-content: center;
+        width: 100%;
         min-width: 0;
-        margin-bottom: 14px;
+    }
+
+    .hero-actions > * {
+        flex: 1 1 0;
+        max-width: 200px;
     }
 
     .language-select,
     .install-app-btn,
     .top-tool-btn {
-        width: 100%;
+        width: auto;
         min-width: 0;
-        min-height: 42px;
+        min-height: 44px;
     }
 
     .install-app-btn {
@@ -1493,8 +1624,12 @@ select {
     }
 
     .now-card {
-        padding: 14px;
-        border-radius: 16px;
+        padding: 14px 14px 18px;
+        border-radius: 0 0 22px 22px;
+    }
+
+    .now-card::before {
+        margin-bottom: 14px;
     }
 
     .now-grid {
