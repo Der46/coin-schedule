@@ -795,9 +795,17 @@ select {
     white-space: nowrap;
 }
 
+/* The "next day" tag sits on its own line so long translations
+   (e.g. "next day", "วันถัดไป") never spill into the timeline column. */
 .ev-end small {
-    margin-left: 3px;
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    margin-top: 2px;
     padding: 0 4px;
+    line-height: 1.5;
+    white-space: normal;
+    overflow-wrap: anywhere;
     color: #b45309;
     font-size: 10px;
     background: #fef3c7;

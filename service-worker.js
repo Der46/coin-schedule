@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_NAME = "coin999-schedule-v3";
+const CACHE_NAME = "coin999-schedule-v4";
 
 const APP_ASSETS = [
     "./",
