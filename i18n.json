@@ -88,7 +88,18 @@
         "eventsCount": "{n} 個活動",
         "timedCount": "{n} 個有標時長",
         "nowMarker": "現在 {time}",
-        "noMatch": "這個分類沒有活動"
+        "noMatch": "這個分類沒有活動",
+        "addToCalendar": "加入行事曆",
+        "calRepeatWeekly": "每週重複",
+        "calApple": "Apple 行事曆／.ics 檔",
+        "calGoogle": "Google 日曆",
+        "calAlarmHint": ".ics 會在活動開始時跳出提醒。",
+        "calGoogleHint": "Google 日曆會使用你預設的通知時間，可在儲存前修改。",
+        "calStaleHint": "活動表改版後，已加入的行事曆活動不會自動更新，請刪除後重新加入。",
+        "calInAppHint": "LINE、Facebook 等 App 內建的瀏覽器可能無法加入，請改用 Safari 或 Chrome 開啟本頁。",
+        "calLocalTime": "行事曆時間（依手機時區）：{time}",
+        "calDownloaded": "已下載 .ics，請點開檔案加入行事曆",
+        "close": "關閉"
     },
     "en": {
         "updateLabel": "Updated",
@@ -179,7 +190,18 @@
         "eventsCount": "{n} events",
         "timedCount": "{n} with duration",
         "nowMarker": "Now {time}",
-        "noMatch": "No events in this category"
+        "noMatch": "No events in this category",
+        "addToCalendar": "Add to calendar",
+        "calRepeatWeekly": "Repeat weekly",
+        "calApple": "Apple Calendar / .ics file",
+        "calGoogle": "Google Calendar",
+        "calAlarmHint": "The .ics file reminds you when the event starts.",
+        "calGoogleHint": "Google Calendar uses your default notification time; you can change it before saving.",
+        "calStaleHint": "When the schedule is updated, events you already added won't change. Delete them and add them again.",
+        "calInAppHint": "In-app browsers (LINE, Facebook, etc.) may not support this. Open this page in Safari or Chrome.",
+        "calLocalTime": "Calendar time (your phone's time zone): {time}",
+        "calDownloaded": "Downloaded .ics: open the file to add it to your calendar",
+        "close": "Close"
     },
     "vi": {
         "updateLabel": "Cập nhật",
@@ -270,7 +292,18 @@
         "eventsCount": "{n} sự kiện",
         "timedCount": "{n} có thời lượng",
         "nowMarker": "Bây giờ {time}",
-        "noMatch": "Không có sự kiện trong mục này"
+        "noMatch": "Không có sự kiện trong mục này",
+        "addToCalendar": "Thêm vào lịch",
+        "calRepeatWeekly": "Lặp lại hằng tuần",
+        "calApple": "Lịch Apple / tệp .ics",
+        "calGoogle": "Google Lịch",
+        "calAlarmHint": "Tệp .ics sẽ nhắc bạn khi sự kiện bắt đầu.",
+        "calGoogleHint": "Google Lịch dùng thời gian thông báo mặc định của bạn, có thể chỉnh trước khi lưu.",
+        "calStaleHint": "Khi lịch sự kiện được cập nhật, các mục đã thêm sẽ không tự thay đổi. Hãy xóa và thêm lại.",
+        "calInAppHint": "Trình duyệt trong ứng dụng (LINE, Facebook...) có thể không hỗ trợ. Hãy mở trang này bằng Safari hoặc Chrome.",
+        "calLocalTime": "Giờ trên lịch (múi giờ điện thoại): {time}",
+        "calDownloaded": "Đã tải .ics: mở tệp để thêm vào lịch",
+        "close": "Đóng"
     },
     "ja": {
         "updateLabel": "更新",
@@ -361,7 +394,18 @@
         "eventsCount": "{n} 件",
         "timedCount": "時間記載 {n} 件",
         "nowMarker": "現在 {time}",
-        "noMatch": "このカテゴリのイベントはありません"
+        "noMatch": "このカテゴリのイベントはありません",
+        "addToCalendar": "カレンダーに追加",
+        "calRepeatWeekly": "毎週繰り返す",
+        "calApple": "Apple カレンダー／.ics ファイル",
+        "calGoogle": "Google カレンダー",
+        "calAlarmHint": ".ics はイベント開始時に通知します。",
+        "calGoogleHint": "Google カレンダーは既定の通知時間を使います。保存前に変更できます。",
+        "calStaleHint": "スケジュールが更新されても、追加済みの予定は変わりません。削除して追加し直してください。",
+        "calInAppHint": "LINE や Facebook などのアプリ内ブラウザでは追加できない場合があります。Safari または Chrome で開いてください。",
+        "calLocalTime": "カレンダーの時刻（端末のタイムゾーン）：{time}",
+        "calDownloaded": ".ics をダウンロードしました。ファイルを開いてカレンダーに追加してください",
+        "close": "閉じる"
     },
     "ko": {
         "updateLabel": "업데이트",
@@ -452,7 +496,18 @@
         "eventsCount": "이벤트 {n}개",
         "timedCount": "시간 표기 {n}개",
         "nowMarker": "지금 {time}",
-        "noMatch": "이 분류에 이벤트가 없습니다"
+        "noMatch": "이 분류에 이벤트가 없습니다",
+        "addToCalendar": "캘린더에 추가",
+        "calRepeatWeekly": "매주 반복",
+        "calApple": "Apple 캘린더 / .ics 파일",
+        "calGoogle": "Google 캘린더",
+        "calAlarmHint": ".ics 파일은 이벤트 시작 시 알려 줍니다.",
+        "calGoogleHint": "Google 캘린더는 기본 알림 시간을 사용하며, 저장 전에 변경할 수 있습니다.",
+        "calStaleHint": "일정이 업데이트되어도 이미 추가한 일정은 바뀌지 않습니다. 삭제 후 다시 추가하세요.",
+        "calInAppHint": "LINE, Facebook 등 앱 내 브라우저에서는 추가되지 않을 수 있습니다. Safari 또는 Chrome에서 열어 주세요.",
+        "calLocalTime": "캘린더 시간(휴대폰 시간대): {time}",
+        "calDownloaded": ".ics를 다운로드했습니다. 파일을 열어 캘린더에 추가하세요",
+        "close": "닫기"
     },
     "th": {
         "updateLabel": "อัปเดต",
@@ -543,7 +598,18 @@
         "eventsCount": "{n} กิจกรรม",
         "timedCount": "ระบุเวลา {n} รายการ",
         "nowMarker": "ตอนนี้ {time}",
-        "noMatch": "ไม่มีกิจกรรมในหมวดนี้"
+        "noMatch": "ไม่มีกิจกรรมในหมวดนี้",
+        "addToCalendar": "เพิ่มลงปฏิทิน",
+        "calRepeatWeekly": "ทำซ้ำทุกสัปดาห์",
+        "calApple": "ปฏิทิน Apple / ไฟล์ .ics",
+        "calGoogle": "Google ปฏิทิน",
+        "calAlarmHint": "ไฟล์ .ics จะแจ้งเตือนเมื่อกิจกรรมเริ่ม",
+        "calGoogleHint": "Google ปฏิทินใช้เวลาแจ้งเตือนเริ่มต้นของคุณ แก้ไขได้ก่อนบันทึก",
+        "calStaleHint": "เมื่อตารางกิจกรรมอัปเดต รายการที่เพิ่มไว้แล้วจะไม่เปลี่ยนตาม โปรดลบแล้วเพิ่มใหม่",
+        "calInAppHint": "เบราว์เซอร์ในแอป (LINE, Facebook ฯลฯ) อาจเพิ่มไม่ได้ โปรดเปิดหน้านี้ใน Safari หรือ Chrome",
+        "calLocalTime": "เวลาในปฏิทิน (ตามเขตเวลาของโทรศัพท์): {time}",
+        "calDownloaded": "ดาวน์โหลด .ics แล้ว เปิดไฟล์เพื่อเพิ่มลงปฏิทิน",
+        "close": "ปิด"
     },
     "id": {
         "updateLabel": "Diperbarui",
@@ -634,7 +700,18 @@
         "eventsCount": "{n} event",
         "timedCount": "{n} dengan durasi",
         "nowMarker": "Sekarang {time}",
-        "noMatch": "Tidak ada event di kategori ini"
+        "noMatch": "Tidak ada event di kategori ini",
+        "addToCalendar": "Tambah ke kalender",
+        "calRepeatWeekly": "Ulangi setiap minggu",
+        "calApple": "Kalender Apple / file .ics",
+        "calGoogle": "Google Kalender",
+        "calAlarmHint": "File .ics akan mengingatkan saat event dimulai.",
+        "calGoogleHint": "Google Kalender memakai waktu notifikasi default Anda; bisa diubah sebelum disimpan.",
+        "calStaleHint": "Saat jadwal diperbarui, entri yang sudah ditambahkan tidak ikut berubah. Hapus lalu tambahkan lagi.",
+        "calInAppHint": "Browser dalam aplikasi (LINE, Facebook, dll.) mungkin tidak mendukung. Buka halaman ini di Safari atau Chrome.",
+        "calLocalTime": "Waktu di kalender (zona waktu ponsel): {time}",
+        "calDownloaded": "File .ics terunduh: buka file untuk menambahkannya ke kalender",
+        "close": "Tutup"
     },
     "es": {
         "updateLabel": "Actualizado",
@@ -725,7 +802,18 @@
         "eventsCount": "{n} eventos",
         "timedCount": "{n} con duración",
         "nowMarker": "Ahora {time}",
-        "noMatch": "No hay eventos en esta categoría"
+        "noMatch": "No hay eventos en esta categoría",
+        "addToCalendar": "Añadir al calendario",
+        "calRepeatWeekly": "Repetir cada semana",
+        "calApple": "Calendario de Apple / archivo .ics",
+        "calGoogle": "Google Calendar",
+        "calAlarmHint": "El archivo .ics te avisa cuando empieza el evento.",
+        "calGoogleHint": "Google Calendar usa tu aviso predeterminado; puedes cambiarlo antes de guardar.",
+        "calStaleHint": "Si se actualiza el horario, los eventos ya añadidos no cambian. Bórralos y vuelve a añadirlos.",
+        "calInAppHint": "Los navegadores dentro de apps (LINE, Facebook, etc.) pueden no funcionar. Abre esta página en Safari o Chrome.",
+        "calLocalTime": "Hora en el calendario (zona horaria del teléfono): {time}",
+        "calDownloaded": "Se descargó el .ics: ábrelo para añadirlo al calendario",
+        "close": "Cerrar"
     },
     "pt-BR": {
         "updateLabel": "Atualizado",
@@ -816,6 +904,17 @@
         "eventsCount": "{n} eventos",
         "timedCount": "{n} com duração",
         "nowMarker": "Agora {time}",
-        "noMatch": "Nenhum evento nesta categoria"
+        "noMatch": "Nenhum evento nesta categoria",
+        "addToCalendar": "Adicionar à agenda",
+        "calRepeatWeekly": "Repetir toda semana",
+        "calApple": "Calendário da Apple / arquivo .ics",
+        "calGoogle": "Google Agenda",
+        "calAlarmHint": "O arquivo .ics avisa quando o evento começar.",
+        "calGoogleHint": "O Google Agenda usa sua notificação padrão; dá para mudar antes de salvar.",
+        "calStaleHint": "Quando a agenda for atualizada, os eventos já adicionados não mudam. Apague e adicione de novo.",
+        "calInAppHint": "Navegadores dentro de apps (LINE, Facebook etc.) podem não funcionar. Abra esta página no Safari ou no Chrome.",
+        "calLocalTime": "Horário na agenda (fuso do celular): {time}",
+        "calDownloaded": ".ics baixado: abra o arquivo para adicionar à agenda",
+        "close": "Fechar"
     }
 }

@@ -900,6 +900,8 @@ select {
 }
 
 .ev-dur.is-unknown {
+    max-width: 100%;
+    white-space: normal;
     color: #94a3b8;
     font-size: 12px;
     font-weight: 800;
@@ -989,7 +991,196 @@ select {
 .event-badge.mission { --badge-bg: #db2777; }
 .event-badge.default { --badge-bg: #64748b; }
 
+/* ---------- Add to calendar ---------- */
+
+.ev-cal-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    font-size: 16px;
+    line-height: 1;
+    background: #fff;
+    border: 1px solid var(--soft-border);
+    border-radius: 999px;
+    cursor: pointer;
+    transition-property: background-color, border-color, transform;
+    transition-duration: 150ms;
+    transition-timing-function: ease-out;
+}
+
+.ev-cal-btn:hover {
+    background: #eef2ff;
+    border-color: var(--primary);
+}
+
+.ev-cal-btn:active {
+    transform: scale(0.94);
+}
+
+.ev-cal-btn:focus-visible,
+.cal-action:focus-visible,
+.cal-close:focus-visible {
+    outline: 3px solid rgba(99, 102, 241, 0.35);
+    outline-offset: 2px;
+}
+
+.cal-dialog {
+    width: min(440px, calc(100% - 32px));
+    max-width: none;
+    max-height: calc(100% - 32px);
+    padding: 0;
+    overflow-y: auto;
+    color: var(--text);
+    background: #fff;
+    border: none;
+    border-radius: var(--radius);
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+}
+
+.cal-dialog::backdrop {
+    background: rgba(15, 23, 42, 0.45);
+}
+
+.cal-sheet {
+    padding: 18px;
+}
+
+.cal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.cal-head h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 950;
+}
+
+.cal-close {
+    flex: 0 0 auto;
+    width: 38px;
+    height: 38px;
+    color: #111827;
+    font-family: inherit;
+    font-size: 24px;
+    font-weight: 950;
+    line-height: 1;
+    background: #f3f4f6;
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.cal-event {
+    display: grid;
+    gap: 4px;
+    padding: 12px;
+    background: #f8fafc;
+    border: 1px solid #eef2f7;
+    border-radius: 12px;
+}
+
+.cal-event-name {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    margin-bottom: 2px;
+    font-size: 16px;
+    overflow-wrap: anywhere;
+}
+
+.cal-when {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 850;
+    font-variant-numeric: tabular-nums;
+}
+
+.cal-repeat {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    margin: 6px 0;
+    font-size: 15px;
+    font-weight: 900;
+    cursor: pointer;
+    user-select: none;
+}
+
+.cal-repeat input {
+    width: 20px;
+    height: 20px;
+    margin: 0;
+    accent-color: var(--primary);
+}
+
+.cal-actions {
+    display: grid;
+    gap: 8px;
+}
+
+.cal-action {
+    min-height: 48px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 950;
+    background: #fff;
+    border: 1px solid var(--soft-border);
+    border-radius: 14px;
+    cursor: pointer;
+    transition-property: background-color, border-color, transform;
+    transition-duration: 150ms;
+    transition-timing-function: ease-out;
+}
+
+.cal-action:hover {
+    border-color: var(--primary);
+}
+
+.cal-action:active {
+    transform: scale(0.98);
+}
+
+.cal-action.is-primary {
+    color: #fff;
+    background: var(--primary);
+    border-color: var(--primary);
+}
+
+.cal-action.is-primary:hover {
+    background: var(--primary-dark);
+}
+
+.cal-hints {
+    margin: 14px 0 0;
+    padding-left: 18px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 750;
+    line-height: 1.6;
+}
+
+.cal-hints .is-warn {
+    color: #b45309;
+    font-weight: 900;
+}
+
 @media (prefers-reduced-motion: reduce) {
+    .ev-cal-btn:active,
+    .cal-action:active {
+        transform: none;
+    }
+
     .live-dot {
         animation: none;
     }
@@ -1344,6 +1535,21 @@ select {
 
     .ev-name {
         font-size: 15px;
+    }
+
+    .ev-cal-btn {
+        margin-left: auto;
+    }
+
+    .cal-dialog {
+        width: 100%;
+        max-height: calc(100% - 24px);
+        margin: auto 0 0;
+        border-radius: var(--radius) var(--radius) 0 0;
+    }
+
+    .cal-sheet {
+        padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
     }
 
     .schedule-toolbar {

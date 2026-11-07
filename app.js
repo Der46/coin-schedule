@@ -882,9 +882,318 @@ function renderEventItem(event, options = {}) {
             <div class="ev-side">
                 ${durationHtml}
                 ${renderStatus(status)}
+                <button type="button" class="ev-cal-btn" data-ev-id="${escapeHtml(event.id)}" aria-label="${escapeHtml(`${t("addToCalendar")}：${event.name}`)}" title="${escapeHtml(t("addToCalendar"))}">🔔</button>
             </div>
         </li>
     `;
+}
+
+/* ---------- Add to calendar (.ics / Google Calendar) ---------- */
+
+// Events without a stated duration get a 1-minute slot: no made-up duration,
+// and iOS refuses .ics events whose start equals their end.
+const CAL_EVENT_FALLBACK_MINUTES = 1;
+const CAL_ICS_PATH = "./calendar.ics";
+
+let calDialogEvent = null;
+
+function isAppleMobileDevice() {
+    const ua = window.navigator.userAgent;
+    return /iphone|ipad|ipod/i.test(ua) || (/Macintosh/.test(ua) && window.navigator.maxTouchPoints > 1);
+}
+
+function isInAppBrowser() {
+    return /Line\/|FBAN|FBAV|Instagram|MicroMessenger/i.test(window.navigator.userAgent);
+}
+
+// Next real start (UTC ms) of an event, from its original UTC+8 weekday/time.
+function getNextEventStartMs(event) {
+    const parts = event.sourceTime.split(":").map(Number);
+    const sourceMinute = parts[0] * 60 + parts[1];
+    const offsetMs = SOURCE_TIMEZONE_OFFSET_MINUTES * 60000;
+    const weekMs = WEEK_MINUTES * 60000;
+    const nowMs = Date.now();
+    const sourceNow = new Date(nowMs + offsetMs);
+    const sourceDayIndex = (sourceNow.getUTCDay() + 6) % 7;
+    const sourceMidnightMs = Date.UTC(sourceNow.getUTCFullYear(), sourceNow.getUTCMonth(), sourceNow.getUTCDate()) - offsetMs;
+    const dayDelta = commandToIndex(event.sourceCommand) - sourceDayIndex;
+
+    let startMs = sourceMidnightMs + (dayDelta * 1440 + sourceMinute) * 60000;
+
+    while (startMs <= nowMs) startMs += weekMs;
+    while (startMs - weekMs > nowMs) startMs -= weekMs;
+
+    return startMs;
+}
+
+const toCalendarUtc = ms => new Date(ms).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+
+const escapeIcsText = text => String(text)
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\r?\n/g, "\\n");
+
+// RFC 5545: lines longer than 75 octets are folded with CRLF + space.
+function foldIcsLine(line) {
+    const encoder = new TextEncoder();
+    const chunks = [];
+    let current = "";
+    let bytes = 0;
+
+    for (const char of line) {
+        const size = encoder.encode(char).length;
+
+        if (bytes + size > (chunks.length ? 74 : 75)) {
+            chunks.push(current);
+            current = "";
+            bytes = 0;
+        }
+
+        current += char;
+        bytes += size;
+    }
+
+    chunks.push(current);
+    return chunks.join("\r\n ");
+}
+
+function hashText(text) {
+    let hash = 0;
+
+    for (const char of String(text)) {
+        hash = (hash * 31 + char.codePointAt(0)) >>> 0;
+    }
+
+    return hash.toString(36);
+}
+
+function getCalendarDetails(event) {
+    const parts = [];
+
+    if (event.notes.length) parts.push(event.notes.join(" · "));
+    parts.push(event.durationMinutes ? tf("lastsFor", { t: formatDuration(event.durationMinutes) }) : t("durationUnknown"));
+    parts.push(`${t("sourceTime")}：${getCommandLabel(event.sourceCommand)} ${event.sourceTime} UTC+08:00`);
+    parts.push(`${t("pageTitle")}：${window.location.origin}${window.location.pathname}`);
+
+    return parts.join("\n");
+}
+
+function getCalendarRange(event) {
+    const startMs = getNextEventStartMs(event);
+    const minutes = event.durationMinutes || CAL_EVENT_FALLBACK_MINUTES;
+
+    return { startMs, endMs: startMs + minutes * 60000 };
+}
+
+function buildIcs(event, repeatWeekly) {
+    const range = getCalendarRange(event);
+    const uid = `${event.sourceCommand.replace(/\W/g, "")}-${event.sourceTime.replace(":", "")}-${hashText(event.original)}@coin999-schedule`;
+
+    const lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Coin999//Schedule//EN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+        "BEGIN:VEVENT",
+        `UID:${uid}`,
+        `DTSTAMP:${toCalendarUtc(Date.now())}`,
+        `DTSTART:${toCalendarUtc(range.startMs)}`,
+        `DTEND:${toCalendarUtc(range.endMs)}`,
+        repeatWeekly ? "RRULE:FREQ=WEEKLY" : "",
+        `SUMMARY:${escapeIcsText(event.name)}`,
+        `DESCRIPTION:${escapeIcsText(getCalendarDetails(event))}`,
+        "BEGIN:VALARM",
+        "ACTION:DISPLAY",
+        `DESCRIPTION:${escapeIcsText(event.name)}`,
+        "TRIGGER:PT0M",
+        "END:VALARM",
+        "END:VEVENT",
+        "END:VCALENDAR"
+    ].filter(Boolean);
+
+    return `${lines.map(foldIcsLine).join("\r\n")}\r\n`;
+}
+
+function buildGoogleCalendarUrl(event, repeatWeekly) {
+    const range = getCalendarRange(event);
+    const params = new URLSearchParams({
+        action: "TEMPLATE",
+        text: event.name,
+        dates: `${toCalendarUtc(range.startMs)}/${toCalendarUtc(range.endMs)}`,
+        details: getCalendarDetails(event)
+    });
+
+    if (repeatWeekly) params.set("recur", "RRULE:FREQ=WEEKLY");
+
+    return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+function toBase64Url(text) {
+    let binary = "";
+
+    new TextEncoder().encode(text).forEach(byte => {
+        binary += String.fromCharCode(byte);
+    });
+
+    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function deliverIcs(ics, filename) {
+    // iOS opens the "Add to Calendar" sheet for a navigated text/calendar
+    // response, so serve it from a same-origin URL via the service worker
+    // (falls back to a data: URL before the worker controls the page).
+    if (isAppleMobileDevice()) {
+        const controlled = "serviceWorker" in navigator && navigator.serviceWorker.controller;
+
+        window.location.href = controlled
+            ? `${CAL_ICS_PATH}?name=${encodeURIComponent(filename)}&d=${toBase64Url(ics)}`
+            : `data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}`;
+        return;
+    }
+
+    const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 10000);
+
+    showToast(t("calDownloaded"));
+}
+
+function getCalendarLocalTimeLabel(event) {
+    const date = new Date(getNextEventStartMs(event));
+
+    try {
+        return new Intl.DateTimeFormat(currentLang, {
+            month: "numeric",
+            day: "numeric",
+            weekday: "short",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false
+        }).format(date);
+    } catch (error) {
+        return date.toLocaleString();
+    }
+}
+
+function renderCalendarDialog() {
+    const dialog = $("calDialog");
+    const event = calDialogEvent;
+
+    if (!dialog || !event) return;
+
+    const repeatWeekly = readPref("coin999_cal_repeat", "1") === "1";
+    const appleFirst = isAppleMobileDevice();
+
+    const appleBtn = `<button type="button" class="cal-action${appleFirst ? " is-primary" : ""}" data-cal="ics">${escapeHtml(t("calApple"))}</button>`;
+    const googleBtn = `<button type="button" class="cal-action${appleFirst ? "" : " is-primary"}" data-cal="google">${escapeHtml(t("calGoogle"))}</button>`;
+
+    dialog.innerHTML = `
+        <div class="cal-sheet">
+            <div class="cal-head">
+                <h2 id="calDialogTitle">${escapeHtml(t("addToCalendar"))}</h2>
+                <button type="button" class="cal-close" data-cal="close" aria-label="${escapeHtml(t("close"))}">×</button>
+            </div>
+            <div class="cal-event">
+                <div class="cal-event-name">
+                    <span class="event-badge ${escapeHtml(event.category)}">${escapeHtml(getCategoryLabel(event.category))}</span>
+                    <strong>${escapeHtml(event.name)}</strong>
+                </div>
+                <span class="cal-when">${escapeHtml(tf("calLocalTime", { time: getCalendarLocalTimeLabel(event) }))}</span>
+                <span class="cal-when">${escapeHtml(event.durationMinutes ? tf("lastsFor", { t: formatDuration(event.durationMinutes) }) : t("durationUnknown"))}</span>
+            </div>
+            <label class="cal-repeat">
+                <input type="checkbox" id="calRepeatInput" ${repeatWeekly ? "checked" : ""} />
+                <span>${escapeHtml(t("calRepeatWeekly"))}</span>
+            </label>
+            <div class="cal-actions">${appleFirst ? appleBtn + googleBtn : googleBtn + appleBtn}</div>
+            <ul class="cal-hints">
+                ${isInAppBrowser() ? `<li class="is-warn">${escapeHtml(t("calInAppHint"))}</li>` : ""}
+                <li>${escapeHtml(t("calAlarmHint"))}</li>
+                <li>${escapeHtml(t("calGoogleHint"))}</li>
+                <li>${escapeHtml(t("calStaleHint"))}</li>
+            </ul>
+        </div>
+    `;
+
+    const repeatInput = $("calRepeatInput");
+
+    if (repeatInput) {
+        repeatInput.addEventListener("change", () => {
+            writePref("coin999_cal_repeat", repeatInput.checked ? "1" : "0");
+        });
+    }
+}
+
+function openCalendarDialog(eventId) {
+    const dialog = $("calDialog");
+    const event = getAllEvents().find(item => item.id === eventId && !item.isDivider);
+
+    if (!dialog || !event) return;
+
+    calDialogEvent = event;
+    renderCalendarDialog();
+
+    if (typeof dialog.showModal === "function") {
+        dialog.showModal();
+    } else {
+        dialog.setAttribute("open", "");
+    }
+}
+
+function closeCalendarDialog() {
+    const dialog = $("calDialog");
+
+    if (!dialog) return;
+
+    if (typeof dialog.close === "function") {
+        if (dialog.open) dialog.close();
+    } else {
+        dialog.removeAttribute("open");
+    }
+}
+
+function handleCalendarDialogClick(clickEvent) {
+    const dialog = $("calDialog");
+
+    // A click on the backdrop (the dialog box itself, outside the sheet) closes it.
+    if (clickEvent.target === dialog) {
+        closeCalendarDialog();
+        return;
+    }
+
+    const button = clickEvent.target.closest("[data-cal]");
+
+    if (!button || !calDialogEvent) return;
+
+    const repeatInput = $("calRepeatInput");
+    const repeatWeekly = repeatInput ? repeatInput.checked : true;
+    const action = button.dataset.cal;
+
+    if (action === "close") {
+        closeCalendarDialog();
+        return;
+    }
+
+    if (action === "google") {
+        window.open(buildGoogleCalendarUrl(calDialogEvent, repeatWeekly), "_blank", "noopener");
+        closeCalendarDialog();
+        return;
+    }
+
+    if (action === "ics") {
+        const filename = `coin999-${calDialogEvent.sourceCommand.replace(/\W/g, "")}-${calDialogEvent.sourceTime.replace(":", "")}.ics`;
+
+        closeCalendarDialog();
+        deliverIcs(buildIcs(calDialogEvent, repeatWeekly), filename);
+    }
 }
 
 function renderNowCard(allEvents = getAllEvents()) {
@@ -1245,6 +1554,20 @@ function bindEvents() {
 
     if (sidebarOverlay) {
         sidebarOverlay.addEventListener("click", closeSidebar);
+    }
+
+    if (scheduleView) {
+        scheduleView.addEventListener("click", clickEvent => {
+            const button = clickEvent.target.closest(".ev-cal-btn");
+
+            if (button) openCalendarDialog(button.dataset.evId);
+        });
+    }
+
+    const calDialog = $("calDialog");
+
+    if (calDialog) {
+        calDialog.addEventListener("click", handleCalendarDialogClick);
     }
 
     document.querySelectorAll(".mobile-tool-nav a").forEach(link => {

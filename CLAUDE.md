@@ -24,7 +24,7 @@ python -m http.server 8000
 | `data.json` | 每週活動資料，`/1`~`/7` = 星期一~星期日 |
 | `i18n.json` | 介面文字，9 種語言：zh-Hant、en、vi、ja、ko、th、id、es、pt-BR |
 | `schedule-dictionaries.json` | 活動名稱的翻譯字典（中文 → 各語言，字串取代，長的 key 優先） |
-| `service-worker.js` | 離線快取；`CACHE_NAME` 版本號 |
+| `service-worker.js` | 離線快取；`CACHE_NAME` 版本號；`calendar.ics?d=` 路由把 `app.js` 產生的 .ics 以 `text/calendar` 回應（iOS 加入行事曆用） |
 | `manifest.json`、`icons/` | PWA 設定與圖示 |
 
 ## data.json 格式

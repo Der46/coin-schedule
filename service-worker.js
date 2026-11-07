@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_NAME = "coin999-schedule-v4";
+const CACHE_NAME = "coin999-schedule-v5";
 
 const APP_ASSETS = [
     "./",
@@ -55,6 +55,11 @@ self.addEventListener("fetch", event => {
 
     const url = new URL(request.url);
 
+    if (url.origin === self.location.origin && url.pathname.endsWith("/calendar.ics")) {
+        event.respondWith(calendarResponse(url));
+        return;
+    }
+
     const isDataFile =
         url.pathname.endsWith("/data.json") ||
         url.pathname.endsWith("/i18n.json") ||
@@ -67,6 +72,41 @@ self.addEventListener("fetch", event => {
 
     event.respondWith(cacheFirst(request));
 });
+
+// "Add to calendar": app.js builds the .ics text and passes it base64url-encoded
+// in ?d=. Serving it from a real same-origin URL with text/calendar lets iOS
+// show its native "Add to Calendar" sheet (blob: URLs don't).
+const MAX_ICS_LENGTH = 16000;
+
+function calendarResponse(url) {
+    const encoded = url.searchParams.get("d") || "";
+    const rawName = url.searchParams.get("name") || "event.ics";
+    const filename = /^[\w.-]{1,80}\.ics$/.test(rawName) ? rawName : "event.ics";
+
+    let ics = "";
+
+    try {
+        const base64 = encoded.replace(/-/g, "+").replace(/_/g, "/");
+        const binary = atob(base64 + "=".repeat((4 - base64.length % 4) % 4));
+        const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
+
+        ics = new TextDecoder().decode(bytes);
+    } catch (error) {
+        ics = "";
+    }
+
+    if (ics.length > MAX_ICS_LENGTH || !ics.startsWith("BEGIN:VCALENDAR") || !ics.trimEnd().endsWith("END:VCALENDAR")) {
+        return new Response("Invalid calendar data", { status: 400 });
+    }
+
+    return new Response(ics, {
+        headers: {
+            "Content-Type": "text/calendar; charset=utf-8",
+            "Content-Disposition": `attachment; filename="${filename}"`,
+            "Cache-Control": "no-store"
+        }
+    });
+}
 
 async function cacheFirst(request) {
     const cachedResponse = await caches.match(request);
