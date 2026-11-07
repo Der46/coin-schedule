@@ -51,34 +51,21 @@ const WEEKDAY_COMMANDS = ["/1", "/2", "/3", "/4", "/5", "/6", "/7"];
 const WEEKDAY_I18N_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 const JS_WEEKDAY_I18N_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
-const LANGUAGE_TIMEZONE_OFFSET_MINUTES = {
-    "zh-Hant": 8 * 60,
-    en: 0,
-    vi: 7 * 60,
-    ja: 9 * 60,
-    ko: 9 * 60,
-    th: 7 * 60,
-    id: 7 * 60,
-    es: -5 * 60,
-    "pt-BR": -3 * 60
-};
-
 const hasOwn = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
 
-function getBrowserTimezoneOffsetMinutes() {
-    return -new Date().getTimezoneOffset();
+// Times are shown in the device's own time zone. The offset is looked up for a
+// specific instant, so daylight saving time (summer/winter time) is applied
+// correctly even for events after a DST switch later in the week.
+function getCurrentTimezoneOffsetMinutes(atMs = Date.now()) {
+    return -new Date(atMs).getTimezoneOffset();
 }
 
-function getCurrentTimezoneOffsetMinutes() {
-    if (hasOwn(LANGUAGE_TIMEZONE_OFFSET_MINUTES, currentLang)) {
-        return LANGUAGE_TIMEZONE_OFFSET_MINUTES[currentLang];
+function getDeviceTimezoneName() {
+    try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+    } catch (error) {
+        return "";
     }
-
-    return getBrowserTimezoneOffsetMinutes();
-}
-
-function isUsingBrowserTimezone() {
-    return !hasOwn(LANGUAGE_TIMEZONE_OFFSET_MINUTES, currentLang);
 }
 
 function getTimezoneLabel() {
@@ -88,8 +75,23 @@ function getTimezoneLabel() {
     const hour = Math.floor(abs / 60);
     const minute = abs % 60;
     const utcLabel = `UTC${sign}${pad2(hour)}:${pad2(minute)}`;
+    const zone = getDeviceTimezoneName();
+    const city = zone.includes("/") ? zone.split("/").pop().replace(/_/g, " ") : "";
 
-    return isUsingBrowserTimezone() ? `${utcLabel} Local` : utcLabel;
+    return city ? `${utcLabel} ${city}` : utcLabel;
+}
+
+// The real instant (UTC ms) of a weekly UTC+8 source time within the UTC+8
+// week (Mon–Sun) that contains `referenceMs`.
+function getSourceOccurrenceMs(time, sourceCommand, referenceMs = Date.now()) {
+    const parts = String(time).split(":").map(Number);
+    const offsetMs = SOURCE_TIMEZONE_OFFSET_MINUTES * 60000;
+    const sourceNow = new Date(referenceMs + offsetMs);
+    const sourceDayIndex = (sourceNow.getUTCDay() + 6) % 7;
+    const sourceMidnightMs = Date.UTC(sourceNow.getUTCFullYear(), sourceNow.getUTCMonth(), sourceNow.getUTCDate()) - offsetMs;
+    const weekStartMs = sourceMidnightMs - sourceDayIndex * 86400000;
+
+    return weekStartMs + (commandToIndex(sourceCommand) * 1440 + parts[0] * 60 + parts[1]) * 60000;
 }
 
 function commandToIndex(command) {
@@ -108,7 +110,8 @@ function convertSourceTimeToCurrentTimezone(time, sourceCommand) {
     const minute = timeParts[1];
 
     const sourceTotalMinutes = hour * 60 + minute;
-    const diff = getCurrentTimezoneOffsetMinutes() - SOURCE_TIMEZONE_OFFSET_MINUTES;
+    const occurrenceMs = getSourceOccurrenceMs(time, sourceCommand);
+    const diff = getCurrentTimezoneOffsetMinutes(occurrenceMs) - SOURCE_TIMEZONE_OFFSET_MINUTES;
 
     let convertedTotalMinutes = sourceTotalMinutes + diff;
     let dayShift = 0;
@@ -138,11 +141,9 @@ function convertSourceTimeToCurrentTimezone(time, sourceCommand) {
     };
 }
 
+// The device's local time: getDay()/getHours() already follow its time zone and DST.
 function getNowInCurrentTimezone() {
-    const now = new Date();
-    const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-
-    return new Date(utc + getCurrentTimezoneOffsetMinutes() * 60000);
+    return new Date();
 }
 
 function getDisplayDateInCurrentTimezone() {
@@ -908,17 +909,10 @@ function isInAppBrowser() {
 
 // Next real start (UTC ms) of an event, from its original UTC+8 weekday/time.
 function getNextEventStartMs(event) {
-    const parts = event.sourceTime.split(":").map(Number);
-    const sourceMinute = parts[0] * 60 + parts[1];
-    const offsetMs = SOURCE_TIMEZONE_OFFSET_MINUTES * 60000;
     const weekMs = WEEK_MINUTES * 60000;
     const nowMs = Date.now();
-    const sourceNow = new Date(nowMs + offsetMs);
-    const sourceDayIndex = (sourceNow.getUTCDay() + 6) % 7;
-    const sourceMidnightMs = Date.UTC(sourceNow.getUTCFullYear(), sourceNow.getUTCMonth(), sourceNow.getUTCDate()) - offsetMs;
-    const dayDelta = commandToIndex(event.sourceCommand) - sourceDayIndex;
 
-    let startMs = sourceMidnightMs + (dayDelta * 1440 + sourceMinute) * 60000;
+    let startMs = getSourceOccurrenceMs(event.sourceTime, event.sourceCommand, nowMs);
 
     while (startMs <= nowMs) startMs += weekMs;
     while (startMs - weekMs > nowMs) startMs -= weekMs;
