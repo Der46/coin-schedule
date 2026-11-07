@@ -489,75 +489,70 @@ function selectTodayForCurrentLanguageTimezone(showToastMessage = false) {
     });
 }
 
-const parseDuration = text => {
-    const value = String(text);
-    const regex = /[（(]([^）)]+)[）)]/g;
-    let match;
+const WEEK_MINUTES = 7 * 1440;
+const DURATION_GROUP_RE = /^(.*?)\s*(\d+(?:\.\d+)?)\s*(mins?|分鐘|分|hrs?|h|小時)\s*$/i;
+const PAREN_GROUP_RE = /[（(]([^（）()]*)[）)]/g;
 
-    while ((match = regex.exec(value)) !== null) {
-        const inside = match[1].trim();
+const tf = (key, vars = {}) => t(key).replace(/\{(\w+)\}/g, (_, name) => (hasOwn(vars, name) ? vars[name] : ""));
 
-        const isDuration =
-            /^\d+\s*(?:Min|mins|min|分鐘|分|H|Hr|hrs|小時)$/i.test(inside) ||
-            /^登入後?\s*\d+\s*(?:Min|mins|min|分鐘|分|H|Hr|hrs|小時)$/i.test(inside) ||
-            /^(After Login|Sau khi đăng nhập|ログイン後|로그인 후|หลังเข้าสู่ระบบ|Setelah login|Después de iniciar sesión|Após login)\s*\d+\s*(?:Min|mins|min|H|Hr|hrs|分鐘|分|小時)$/i.test(inside);
+const mod = (value, base) => ((value % base) + base) % base;
 
-        if (isDuration) {
-            return {
-                label: inside,
-                raw: match[0]
-            };
-        }
-    }
-
-    return {
-        label: "",
-        raw: ""
-    };
+const minutesToClock = minutes => {
+    const value = mod(Math.round(minutes), 1440);
+    return `${pad2(Math.floor(value / 60))}:${pad2(value % 60)}`;
 };
 
-function splitEventText(text, durationRaw) {
-    let name = String(text || "").trim();
-    let note = "";
+function formatDuration(minutes) {
+    const total = Math.max(0, Math.round(minutes));
+    const hours = Math.floor(total / 60);
+    const mins = total % 60;
+    const parts = [];
 
-    if (durationRaw) {
-        const index = name.indexOf(durationRaw);
+    if (hours) parts.push(tf("fmtHour", { n: hours }));
+    if (mins || !hours) parts.push(tf("fmtMin", { n: mins }));
 
-        if (index >= 0) {
-            const before = name.slice(0, index).trim();
-            const after = name.slice(index + durationRaw.length).trim();
+    return parts.join(" ");
+}
 
-            name = before || name;
-            note = after;
+// Splits "金槌🔨（1H）（備註）" into name / notes / duration minutes.
+// A parenthesised group ending in a number + unit (H / Min / 小時 / 分) is the duration;
+// any text in front of the number (e.g. 登入後) is kept as a note.
+function parseEventText(text) {
+    const value = String(text || "").trim();
+    const notes = [];
+    let durationMinutes = 0;
+    let match;
+
+    PAREN_GROUP_RE.lastIndex = 0;
+
+    while ((match = PAREN_GROUP_RE.exec(value)) !== null) {
+        const inside = match[1].trim();
+        const duration = !durationMinutes && inside.match(DURATION_GROUP_RE);
+
+        if (duration && duration[1].length <= 40) {
+            const amount = Number(duration[2]);
+            const isHour = /^(h|hrs?|小時)$/i.test(duration[3]);
+
+            durationMinutes = Math.round(isHour ? amount * 60 : amount);
+
+            if (duration[1].trim()) {
+                notes.unshift(duration[1].trim());
+            }
+        } else if (inside) {
+            notes.push(inside);
         }
     }
 
-    const noteMatch = name.match(/[（(]([^）)]+)[）)]/);
-
-    if (noteMatch) {
-        const before = name.slice(0, noteMatch.index).trim();
-        const inside = noteMatch[1].trim();
-        const after = name.slice(noteMatch.index + noteMatch[0].length).trim();
-
-        if (before) {
-            name = before;
-            note = [inside, after].filter(Boolean).join(" ");
-        }
-    }
-
-    name = name
-        .replace(/（\s*）/g, "")
-        .replace(/\(\s*\)/g, "")
-        .replace(/\s+/g, " ")
-        .trim();
-
-    note = note
+    const name = value
+        .replace(PAREN_GROUP_RE, " ")
+        .replace(/[（）()]/g, " ")
         .replace(/\s+/g, " ")
         .trim();
 
     return {
-        name,
-        note
+        name: name || value,
+        notes,
+        durationMinutes
     };
 }
 
@@ -629,6 +624,8 @@ const getEventCategory = text => {
     return "default";
 };
 
+const CATEGORY_ORDER = ["village", "coin", "hammer", "card", "mission", "default"];
+
 const getCategoryLabel = category => ({
     village: t("categoryVillage"),
     coin: t("categoryCoin"),
@@ -659,9 +656,10 @@ function parseScheduleDescriptionForSourceItem(item) {
 
         const sourceTime = normalizeTime(match[1]);
         const text = match[2].trim();
-        const durationInfo = parseDuration(text);
-        const cleanInfo = splitEventText(text, durationInfo.raw);
+        const info = parseEventText(text);
         const converted = convertSourceTimeToCurrentTimezone(sourceTime, item.command);
+        const startMinute = converted.hour * 60 + converted.minute;
+        const dayIndex = commandToIndex(converted.targetCommand);
 
         events.push({
             id: `${item.command}-${index}`,
@@ -670,11 +668,14 @@ function parseScheduleDescriptionForSourceItem(item) {
             time: converted.time,
             hour: converted.hour,
             minute: converted.minute,
+            startMinute,
+            weekStart: dayIndex * 1440 + startMinute,
             targetCommand: converted.targetCommand,
             dayShift: converted.dayShift,
-            name: cleanInfo.name,
-            note: cleanInfo.note,
-            durationText: durationInfo.label,
+            name: info.name,
+            notes: info.notes,
+            durationMinutes: info.durationMinutes,
+            isDivider: /^[—–-]{2,}/.test(text),
             original: text,
             category: getEventCategory(text)
         });
@@ -686,169 +687,416 @@ function parseScheduleDescriptionForSourceItem(item) {
     };
 }
 
-function getEventsForDisplayCommand(displayCommand) {
-    const allEvents = [];
+const compareEvents = (a, b) => {
+    if (a.startMinute !== b.startMinute) return a.startMinute - b.startMinute;
+    if (a.isDivider !== b.isDivider) return a.isDivider ? -1 : 1;
+    return String(a.name).localeCompare(String(b.name));
+};
+
+function getAllEvents() {
+    const all = [];
 
     DATA.forEach(item => {
-        const parsed = parseScheduleDescriptionForSourceItem(item);
-
-        parsed.events.forEach(event => {
-            if (event.targetCommand === displayCommand) {
-                allEvents.push(event);
-            }
-        });
+        parseScheduleDescriptionForSourceItem(item).events.forEach(event => all.push(event));
     });
 
-    allEvents.sort((a, b) => {
-        const aMinutes = a.hour * 60 + a.minute;
-        const bMinutes = b.hour * 60 + b.minute;
+    return all;
+}
 
-        if (aMinutes !== bMinutes) return aMinutes - bMinutes;
+function getEventsForDisplayCommand(displayCommand, allEvents = getAllEvents()) {
+    return allEvents
+        .filter(event => event.targetCommand === displayCommand)
+        .sort(compareEvents);
+}
 
-        return String(a.name).localeCompare(String(b.name));
-    });
+// Events from the previous day whose duration runs past midnight into this day.
+function getCarryOverEvents(displayCommand, allEvents) {
+    const previousCommand = indexToCommand(commandToIndex(displayCommand) - 1);
 
-    return allEvents;
+    return allEvents
+        .filter(event =>
+            event.targetCommand === previousCommand &&
+            !event.isDivider &&
+            event.durationMinutes > 0 &&
+            event.startMinute + event.durationMinutes > 1440
+        )
+        .sort(compareEvents);
+}
+
+function getNowWeekMinute() {
+    const now = getNowInCurrentTimezone();
+    const dayIndex = (now.getDay() + 6) % 7;
+
+    return dayIndex * 1440 + now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
+}
+
+// Live = now falls inside [start, start + duration), across the weekly cycle.
+function getLiveInfo(event, nowWeekMinute) {
+    if (!event.durationMinutes || event.isDivider) return null;
+
+    const elapsed = mod(nowWeekMinute - event.weekStart, WEEK_MINUTES);
+
+    if (elapsed >= event.durationMinutes) return null;
+
+    return {
+        elapsed,
+        remaining: event.durationMinutes - elapsed,
+        progress: elapsed / event.durationMinutes
+    };
+}
+
+function getEventStatus(event, nowWeekMinute) {
+    const live = getLiveInfo(event, nowWeekMinute);
+
+    if (live) return { kind: "live", ...live };
+
+    const startsIn = mod(event.weekStart - nowWeekMinute, WEEK_MINUTES);
+    const sinceStart = WEEK_MINUTES - startsIn;
+
+    if (sinceStart > 0 && sinceStart < 1440) {
+        return event.durationMinutes ? { kind: "ended" } : { kind: "started", sinceStart };
+    }
+
+    return { kind: "upcoming", startsIn };
+}
+
+function readPref(key, fallback) {
+    try {
+        const value = localStorage.getItem(key);
+        return value === null ? fallback : value;
+    } catch (error) {
+        return fallback;
+    }
+}
+
+function writePref(key, value) {
+    try {
+        localStorage.setItem(key, value);
+    } catch (error) {
+        /* storage unavailable: keep the in-memory value only */
+    }
+}
+
+let activeFilter = readPref("coin999_filter", "all");
+let hideEnded = readPref("coin999_hide_ended", "0") === "1";
+
+function renderNotes(event) {
+    const notes = event.notes.slice();
+
+    if (event.dayShift !== 0) {
+        notes.push(`${t("sourceTime")}：${getCommandLabel(event.sourceCommand)} ${event.sourceTime} UTC+08:00`);
+    }
+
+    if (!notes.length) return "";
+
+    return `<div class="ev-notes">${notes.map(note => `<span class="ev-note">${escapeHtml(note)}</span>`).join("")}</div>`;
+}
+
+// A 24h mini track showing where in the day the event runs.
+function renderTrack(event, live, offsetMinutes = 0) {
+    if (!event.durationMinutes) return "";
+
+    const start = event.startMinute - offsetMinutes;
+    const end = start + event.durationMinutes;
+    const left = Math.max(0, start) / 1440 * 100;
+    const right = Math.min(1440, end) / 1440 * 100;
+
+    const nowMarker = live
+        ? `<i class="ev-track-now" style="left:${((start + live.elapsed) / 1440 * 100).toFixed(2)}%"></i>`
+        : "";
+
+    return `
+        <div class="ev-track" aria-hidden="true">
+            <span class="ev-track-bar" style="left:${left.toFixed(2)}%;width:${Math.max(right - left, 0.6).toFixed(2)}%"></span>
+            ${nowMarker}
+        </div>
+    `;
+}
+
+function renderStatus(status) {
+    if (!status) return "";
+
+    if (status.kind === "live") {
+        return `<span class="ev-status is-live"><i class="live-dot"></i>${escapeHtml(tf("liveCountdown", { t: formatDuration(Math.ceil(status.remaining)) }))}</span>`;
+    }
+
+    if (status.kind === "ended") {
+        return `<span class="ev-status is-ended">${escapeHtml(t("endedLabel"))}</span>`;
+    }
+
+    if (status.kind === "started") {
+        return `<span class="ev-status is-started">${escapeHtml(t("startedLabel"))}</span>`;
+    }
+
+    if (status.kind === "upcoming" && status.startsIn <= 180) {
+        return `<span class="ev-status is-soon">${escapeHtml(tf("startsIn", { t: formatDuration(Math.ceil(status.startsIn)) }))}</span>`;
+    }
+
+    return "";
+}
+
+function renderEventItem(event, options = {}) {
+    if (event.isDivider) {
+        return `<li class="ev-divider"><span>${escapeHtml(event.time)}</span>${escapeHtml(event.name.replace(/^[—–-]+|[—–-]+$/g, "").trim())}</li>`;
+    }
+
+    const status = options.status || null;
+    const live = status && status.kind === "live" ? status : null;
+    const offset = options.carryOver ? 1440 : 0;
+    const end = event.startMinute + event.durationMinutes;
+    const crossesDay = end > 1440;
+
+    const endHtml = event.durationMinutes
+        ? `<span class="ev-end">→ ${escapeHtml(minutesToClock(end))}${crossesDay && !options.carryOver ? `<small>${escapeHtml(t("nextDay"))}</small>` : ""}</span>`
+        : "";
+
+    const durationHtml = event.durationMinutes
+        ? `<span class="ev-dur">${escapeHtml(formatDuration(event.durationMinutes))}</span>`
+        : `<span class="ev-dur is-unknown">${escapeHtml(t("durationUnknown"))}</span>`;
+
+    const classes = [
+        "ev",
+        `cat-${event.category}`,
+        status ? `is-${status.kind}` : "",
+        event.durationMinutes ? "" : "no-duration"
+    ].filter(Boolean).join(" ");
+
+    const startLabel = options.carryOver
+        ? `<small>${escapeHtml(t("previousDayShort"))}</small>${escapeHtml(event.time)}`
+        : escapeHtml(event.time);
+
+    return `
+        <li class="${classes}">
+            <div class="ev-time">
+                <span class="ev-start">${startLabel}</span>
+                ${endHtml}
+            </div>
+            <div class="ev-body">
+                <div class="ev-head">
+                    <span class="event-badge ${escapeHtml(event.category)}">${escapeHtml(getCategoryLabel(event.category))}</span>
+                    <span class="ev-name">${escapeHtml(event.name)}</span>
+                </div>
+                ${renderNotes(event)}
+                ${renderTrack(event, live, offset)}
+            </div>
+            <div class="ev-side">
+                ${durationHtml}
+                ${renderStatus(status)}
+            </div>
+        </li>
+    `;
+}
+
+function renderNowCard(allEvents = getAllEvents()) {
+    const nowCard = $("nowCard");
+
+    if (!nowCard || !dataLoaded) return;
+
+    const nowWeekMinute = getNowWeekMinute();
+    const nowClock = minutesToClock(Math.floor(mod(nowWeekMinute, 1440)));
+    const realEvents = allEvents.filter(event => !event.isDivider);
+    const todayCommand = getWeekdayCommandByDate();
+
+    const liveEvents = realEvents
+        .map(event => ({ event, live: getLiveInfo(event, nowWeekMinute) }))
+        .filter(entry => entry.live)
+        .sort((a, b) => a.live.remaining - b.live.remaining);
+
+    const justStarted = realEvents
+        .filter(event => !event.durationMinutes)
+        .map(event => ({ event, since: mod(nowWeekMinute - event.weekStart, WEEK_MINUTES) }))
+        .filter(entry => entry.since < 60)
+        .sort((a, b) => a.since - b.since);
+
+    const upcomingAll = realEvents
+        .map(event => ({ event, startsIn: mod(event.weekStart - nowWeekMinute, WEEK_MINUTES) }))
+        .filter(entry => entry.startsIn > 0)
+        .sort((a, b) => a.startsIn - b.startsIn);
+
+    const nextStarts = [...new Set(upcomingAll.map(entry => entry.event.weekStart))].slice(0, 2);
+    const upcoming = upcomingAll.filter(entry => nextStarts.includes(entry.event.weekStart)).slice(0, 6);
+
+    const liveHtml = liveEvents.length
+        ? liveEvents.map(({ event, live }) => `
+            <li class="now-item">
+                <div class="now-item-top">
+                    <span class="event-badge ${escapeHtml(event.category)}">${escapeHtml(getCategoryLabel(event.category))}</span>
+                    <span class="now-item-name">${escapeHtml(event.name)}</span>
+                    <span class="now-item-left">${escapeHtml(tf("liveCountdown", { t: formatDuration(Math.ceil(live.remaining)) }))}</span>
+                </div>
+                <div class="now-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(live.progress * 100)}">
+                    <span style="width:${(live.progress * 100).toFixed(1)}%"></span>
+                </div>
+                <div class="now-item-range">${escapeHtml(event.targetCommand !== todayCommand ? `${t(`${WEEKDAY_I18N_KEYS[commandToIndex(event.targetCommand)]}Short`)} ` : "")}${escapeHtml(event.time)} → ${escapeHtml(minutesToClock(event.startMinute + event.durationMinutes))}${event.startMinute + event.durationMinutes > 1440 ? ` (${escapeHtml(t("nextDay"))})` : ""} · ${escapeHtml(formatDuration(event.durationMinutes))}</div>
+            </li>
+        `).join("")
+        : `<li class="now-empty">${escapeHtml(t("noLive"))}</li>`;
+
+    const startedHtml = justStarted.length
+        ? `
+            <div class="now-subtitle is-muted">${escapeHtml(t("justStarted"))}</div>
+            <ul class="now-chips">
+                ${justStarted.map(({ event }) => `<li><b>${escapeHtml(event.time)}</b>${escapeHtml(event.name)}</li>`).join("")}
+            </ul>
+        `
+        : "";
+
+    const upcomingHtml = upcoming.map(({ event, startsIn }) => `
+        <li class="next-item">
+            <span class="next-time">${event.targetCommand !== todayCommand ? `<small>${escapeHtml(t(`${WEEKDAY_I18N_KEYS[commandToIndex(event.targetCommand)]}Short`))}</small>` : ""}${escapeHtml(event.time)}</span>
+            <div class="next-body">
+                <div class="next-head">
+                    <span class="event-badge ${escapeHtml(event.category)}">${escapeHtml(getCategoryLabel(event.category))}</span>
+                    <span class="next-name">${escapeHtml(event.name)}</span>
+                </div>
+                <span class="next-meta">${escapeHtml(tf("startsIn", { t: formatDuration(Math.ceil(startsIn)) }))} · ${escapeHtml(event.durationMinutes ? tf("lastsFor", { t: formatDuration(event.durationMinutes) }) : t("durationUnknown"))}</span>
+            </div>
+        </li>
+    `).join("");
+
+    nowCard.innerHTML = `
+        <div class="now-header">
+            <h2>${escapeHtml(t("nowTitle"))}<span class="now-clock">${escapeHtml(nowClock)}</span></h2>
+            <span class="now-tz">${escapeHtml(getWeekdayNameByDate())} · ${escapeHtml(getTimezoneLabel())}</span>
+        </div>
+        <div class="now-grid">
+            <section class="now-col">
+                <div class="now-subtitle"><i class="live-dot"></i>${escapeHtml(t("liveNow"))}<span class="now-count">${liveEvents.length}</span></div>
+                <ul class="now-list">${liveHtml}</ul>
+                ${startedHtml}
+            </section>
+            <section class="now-col">
+                <div class="now-subtitle">${escapeHtml(t("startingSoon"))}</div>
+                <ul class="next-list">${upcomingHtml}</ul>
+            </section>
+        </div>
+    `;
 }
 
 function renderScheduleView(item) {
     const displayCommand = selectedCommand || item.command;
-    const eventsForDisplay = getEventsForDisplayCommand(displayCommand);
+    const allEvents = getAllEvents();
+    const eventsForDisplay = getEventsForDisplayCommand(displayCommand, allEvents);
+    const carryOver = getCarryOverEvents(displayCommand, allEvents);
 
-    if (!eventsForDisplay.length) {
-        scheduleView.innerHTML = `
-            <div class="no-result">
-                ${escapeHtml(t("noSchedule"))}
-            </div>
-        `;
+    renderNowCard(allEvents);
+
+    if (!eventsForDisplay.length && !carryOver.length) {
+        scheduleView.innerHTML = `<div class="no-result">${escapeHtml(t("noSchedule"))}</div>`;
         return;
     }
 
-    const grouped = new Map(Array.from({ length: 24 }, (_, hour) => [hour, []]));
+    const isSelectedToday = displayCommand === getWeekdayCommandByDate();
+    const nowWeekMinute = getNowWeekMinute();
+    const nowDayMinute = mod(nowWeekMinute, 1440);
+    const nowMarkerHtml = `<li class="now-marker"><span>${escapeHtml(tf("nowMarker", { time: minutesToClock(Math.floor(nowDayMinute)) }))}</span></li>`;
 
-    eventsForDisplay.forEach(event => {
-        grouped.get(event.hour).push(event);
+    const presentCategories = CATEGORY_ORDER.filter(category =>
+        eventsForDisplay.some(event => !event.isDivider && event.category === category)
+    );
+
+    if (activeFilter !== "all" && !presentCategories.includes(activeFilter)) {
+        activeFilter = "all";
+    }
+
+    const matchesFilter = event => activeFilter === "all" || event.isDivider || event.category === activeFilter;
+    const isHidden = status => hideEnded && status && status.kind === "ended";
+
+    const visible = eventsForDisplay
+        .map(event => ({
+            event,
+            status: isSelectedToday && !event.isDivider ? getEventStatus(event, nowWeekMinute) : null
+        }))
+        .filter(({ event, status }) => matchesFilter(event) && !isHidden(status));
+
+    const visibleCarryOver = carryOver
+        .filter(matchesFilter)
+        .map(event => {
+            const live = isSelectedToday ? getLiveInfo(event, nowWeekMinute) : null;
+            return {
+                event,
+                status: isSelectedToday ? (live ? { kind: "live", ...live } : { kind: "ended" }) : null
+            };
+        })
+        .filter(({ status }) => !isHidden(status));
+
+    const listParts = [];
+    let markerInserted = !isSelectedToday;
+
+    visible.forEach(({ event, status }) => {
+        if (!markerInserted && event.startMinute > nowDayMinute) {
+            listParts.push(nowMarkerHtml);
+            markerInserted = true;
+        }
+
+        listParts.push(renderEventItem(event, { status }));
     });
 
-    const firstEvent = eventsForDisplay[0];
-    const lastEvent = eventsForDisplay[eventsForDisplay.length - 1];
+    if (!markerInserted && visible.length) {
+        listParts.push(nowMarkerHtml);
+    }
 
-    const todayCommand = getWeekdayCommandByDate();
-    const isSelectedToday = selectedCommand === todayCommand;
-    const currentHour = getNowInCurrentTimezone().getHours();
+    const carryHtml = visibleCarryOver.length
+        ? `
+            <div class="ev-group-title">${escapeHtml(t("carryOver"))}</div>
+            <ul class="ev-list is-carry">${visibleCarryOver.map(({ event, status }) => renderEventItem(event, { status, carryOver: true })).join("")}</ul>
+        `
+        : "";
 
-    const headerTitle = `${getCommandLabel(displayCommand)} ${t("dailySchedule")}｜${getTimezoneLabel()}`;
+    const realEvents = eventsForDisplay.filter(event => !event.isDivider);
+    const realCount = realEvents.length;
+    const timedCount = realEvents.filter(event => event.durationMinutes).length;
     const updateText = getUpdateText(getItemDescription(item));
 
-    const rows = Array.from({ length: 24 }, (_, hour) => {
-        const events = grouped.get(hour) || [];
-        const isCurrent = isSelectedToday && hour === currentHour;
+    const chips = ["all", ...presentCategories].map(category => {
+        const label = category === "all" ? t("filterAll") : getCategoryLabel(category);
+        const count = category === "all"
+            ? realCount
+            : realEvents.filter(event => event.category === category).length;
+        const isActive = activeFilter === category;
 
-        const eventRows = events.length ? events.map(event => {
-            const sourceHint = event.dayShift !== 0
-                ? `<div class="event-note">${escapeHtml(`${t("sourceTime")}：${getCommandLabel(event.sourceCommand)} ${event.sourceTime} UTC+08:00`)}</div>`
-                : "";
-
-            return `
-                <div class="event-cell-row">
-                    <span class="event-start">${escapeHtml(event.time)}~</span>
-                    <span class="event-badge ${escapeHtml(event.category)}">${escapeHtml(getCategoryLabel(event.category))}</span>
-                    <div class="event-title-wrap">
-                        <div class="event-name">${escapeHtml(event.name)}</div>
-                        ${event.note ? `<div class="event-note">${escapeHtml(event.note)}</div>` : ""}
-                        ${sourceHint}
-                    </div>
-                </div>
-            `;
-        }).join("") : `<div class="empty-event-row"></div>`;
-
-        const durationRows = events.length ? events.map(event => `
-            <div class="duration-cell-row">${event.durationText ? escapeHtml(event.durationText) : ""}</div>
-        `).join("") : `<div class="empty-duration-row"></div>`;
-
-        return `
-            <div class="schedule-hour-row ${isCurrent ? "current-hour" : ""}">
-                <div class="hour-time-cell">${hour}:00~</div>
-                <div class="hour-events-cell">${eventRows}</div>
-                <div class="hour-duration-cell">${durationRows}</div>
-            </div>
-        `;
+        return `<button type="button" class="filter-chip cat-${category}${isActive ? " active" : ""}" data-filter="${category}" aria-pressed="${isActive}">${escapeHtml(label)}<span>${count}</span></button>`;
     }).join("");
 
     scheduleView.innerHTML = `
-        <div class="schedule-summary">
-            <div class="summary-card">
-                <div class="summary-label">${escapeHtml(t("eventCount"))}</div>
-                <div class="summary-value">${eventsForDisplay.length}</div>
-            </div>
-            <div class="summary-card">
-                <div class="summary-label">${escapeHtml(t("firstEvent"))}</div>
-                <div class="summary-value">${escapeHtml(firstEvent.time)}</div>
-            </div>
-            <div class="summary-card">
-                <div class="summary-label">${escapeHtml(t("lastEvent"))}</div>
-                <div class="summary-value">${escapeHtml(lastEvent.time)}</div>
-            </div>
-            <div class="summary-card">
-                <div class="summary-label">${escapeHtml(t("currentPeriod"))}</div>
-                <div class="summary-value">${isSelectedToday ? `${currentHour}:00` : "-"}</div>
-            </div>
+        <div class="schedule-meta">
+            <span>${escapeHtml(tf("eventsCount", { n: realCount }))}</span>
+            <span>${escapeHtml(tf("timedCount", { n: timedCount }))}</span>
+            <span>${escapeHtml(getTimezoneLabel())}</span>
+            ${updateText ? `<span>${escapeHtml(updateText)}</span>` : ""}
         </div>
 
-        <div class="schedule-shell" id="scheduleShell">
-            <div class="schedule-fit" id="scheduleFit">
-                <div class="schedule-board" id="scheduleBoard">
-                    <div class="schedule-board-head">
-                        <div class="schedule-head-cell">${escapeHtml(t("time"))}</div>
-                        <div class="schedule-head-cell">
-                            <div>
-                                <div>${escapeHtml(headerTitle)}</div>
-                                ${updateText ? `<div class="schedule-update">${escapeHtml(updateText)}</div>` : ""}
-                            </div>
-                        </div>
-                        <div class="schedule-head-cell">${escapeHtml(t("duration"))}</div>
-                    </div>
-
-                    ${rows}
-                </div>
-            </div>
+        <div class="schedule-toolbar">
+            <div class="filter-chips" role="group">${chips}</div>
+            ${isSelectedToday ? `
+                <label class="hide-ended-toggle">
+                    <input type="checkbox" id="hideEndedInput" ${hideEnded ? "checked" : ""} />
+                    <span>${escapeHtml(t("hideEnded"))}</span>
+                </label>
+            ` : ""}
         </div>
+
+        ${carryHtml}
+        <ul class="ev-list">${listParts.join("") || `<li class="no-result">${escapeHtml(t("noMatch"))}</li>`}</ul>
     `;
 
-    requestAnimationFrame(() => {
-        fitScheduleBoard();
-
-        const currentRow = scheduleView.querySelector(".schedule-hour-row.current-hour");
-
-        if (currentRow && window.innerWidth > 820) {
-            currentRow.scrollIntoView({
-                behavior: "smooth",
-                block: "center"
-            });
-        }
+    scheduleView.querySelectorAll(".filter-chip").forEach(button => {
+        button.addEventListener("click", () => {
+            activeFilter = button.dataset.filter;
+            writePref("coin999_filter", activeFilter);
+            renderScheduleView(item);
+        });
     });
-}
 
-function fitScheduleBoard() {
-    const fit = $("scheduleFit");
-    const board = $("scheduleBoard");
+    const hideEndedInput = $("hideEndedInput");
 
-    if (!fit || !board) return;
-
-    board.style.transform = "";
-    fit.style.height = "";
-
-    if (window.innerWidth > 820) return;
-
-    const availableWidth = fit.clientWidth;
-    const boardWidth = board.offsetWidth;
-
-    if (!availableWidth || !boardWidth) return;
-
-    const scale = Math.min(availableWidth / boardWidth, 1);
-
-    board.style.transform = `scale(${scale})`;
-    fit.style.height = `${board.offsetHeight * scale}px`;
+    if (hideEndedInput) {
+        hideEndedInput.addEventListener("change", () => {
+            hideEnded = hideEndedInput.checked;
+            writePref("coin999_hide_ended", hideEnded ? "1" : "0");
+            renderScheduleView(item);
+        });
+    }
 }
 
 function renderVisibleDescription(item) {
@@ -899,6 +1147,17 @@ function selectItem(item, scrollToDetail = false) {
             block: "start"
         });
     }
+}
+
+function refreshLiveViews() {
+    if (!dataLoaded || !currentSelected || document.hidden) return;
+    if (document.activeElement && document.activeElement.closest && document.activeElement.closest("#scheduleView")) {
+        renderNowCard();
+        return;
+    }
+
+    updateWeekdayButtons(selectedCommand);
+    renderScheduleView(currentSelected);
 }
 
 function showToast(message) {
@@ -992,7 +1251,12 @@ function bindEvents() {
         link.addEventListener("click", closeSidebar);
     });
 
-    window.addEventListener("resize", fitScheduleBoard);
+    // Keep live countdowns / statuses fresh.
+    window.setInterval(refreshLiveViews, 30000);
+
+    document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) refreshLiveViews();
+    });
 
     document.addEventListener("keydown", event => {
         if (event.key === "Escape") {
