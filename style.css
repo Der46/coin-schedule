@@ -118,32 +118,51 @@ select {
     filter: drop-shadow(0 3px 0 #6b3d00) drop-shadow(0 8px 14px rgba(0, 0, 0, 0.35));
 }
 
+/* Credit seal: a tilted swallow-tail ribbon with gold stitching and a crown.
+   clip-path cuts box-shadow, so the 3D ledge comes from drop-shadow on the wrapper. */
 .hero-credit {
+    display: inline-block;
+    margin: 18px 0 0;
+    transform: rotate(-3deg);
+    filter:
+        drop-shadow(0 3px 0 #6e0f17)
+        drop-shadow(0 8px 12px rgba(0, 0, 0, 0.35));
+}
+
+.hero-credit-ribbon {
+    position: relative;
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    margin: 14px 0 0;
-    padding: 5px 14px 5px 6px;
+    padding: 9px 32px 9px 30px;
     color: #fff;
-    font-size: 14px;
-    font-weight: 900;
-    letter-spacing: 0.04em;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1.5px solid rgba(246, 185, 30, 0.7);
-    border-radius: 999px;
+    font-size: 16px;
+    font-weight: 950;
+    line-height: 1.2;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    text-shadow: 0 1px 0 #7a1018;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0, transparent 45%),
+        linear-gradient(180deg, #ee4a4f 0%, #c4232f 100%);
+    clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 50%, 100% 100%, 0 100%, 14px 50%);
 }
 
-.hero-credit-coin {
-    display: inline-grid;
-    place-items: center;
-    width: 22px;
-    height: 22px;
-    color: #6b3d00;
-    font-size: 12px;
-    font-weight: 950;
-    background: radial-gradient(circle at 35% 30%, #fff3b8 0, var(--gold) 55%, var(--gold-deep) 100%);
-    border-radius: 50%;
-    box-shadow: inset 0 0 0 2px rgba(107, 61, 0, 0.35);
+/* Gold stitching along the top and bottom edges. */
+.hero-credit-ribbon::before {
+    content: "";
+    position: absolute;
+    inset: 4px 12px;
+    border-top: 1.5px dashed rgba(255, 226, 150, 0.9);
+    border-bottom: 1.5px dashed rgba(255, 226, 150, 0.9);
+    pointer-events: none;
+}
+
+.hero-credit-crown {
+    flex: 0 0 auto;
+    width: 20px;
+    height: 20px;
+    margin-top: -2px;
 }
 
 .hero-actions {
