@@ -38,7 +38,6 @@ const desktopToolBtn = $("desktopToolBtn");
 const installAppBtn = $("installAppBtn");
 const mobileSidebar = $("mobileSidebar");
 const mobileSidebarClose = $("mobileSidebarClose");
-const sidebarOverlay = $("sidebarOverlay");
 
 const pad2 = number => {
     const value = String(number);
@@ -330,6 +329,10 @@ function applyI18n(options = {}) {
     document.querySelectorAll("[data-i18n]").forEach(element => {
         const key = element.dataset.i18n;
         element.textContent = t(key);
+    });
+
+    document.querySelectorAll("[data-i18n-aria-label]").forEach(element => {
+        element.setAttribute("aria-label", t(element.dataset.i18nAriaLabel));
     });
 
     if (languageSelect) {
@@ -1415,7 +1418,7 @@ function renderVisibleDescription(item) {
 }
 
 function hideRawDescription() {
-    detailDescription.innerHTML = "";
+    detailDescription.replaceChildren();
     detailDescription.classList.remove("show");
 
     if (rawToggleBtn) {
@@ -1476,16 +1479,21 @@ function showToast(message) {
     }, 1800);
 }
 
+function setSidebarExpanded(expanded) {
+    [mobileMenuBtn, desktopToolBtn].forEach(button => {
+        if (button) button.setAttribute("aria-expanded", String(expanded));
+    });
+}
+
 function openSidebar() {
-    mobileSidebar.classList.add("show");
-    sidebarOverlay.classList.add("show");
-    document.body.classList.add("sidebar-open");
+    if (!mobileSidebar || mobileSidebar.open) return;
+
+    mobileSidebar.showModal();
+    setSidebarExpanded(true);
 }
 
 function closeSidebar() {
-    mobileSidebar.classList.remove("show");
-    sidebarOverlay.classList.remove("show");
-    document.body.classList.remove("sidebar-open");
+    if (mobileSidebar && mobileSidebar.open) mobileSidebar.close();
 }
 
 function bindEvents() {
@@ -1546,8 +1554,22 @@ function bindEvents() {
         mobileSidebarClose.addEventListener("click", closeSidebar);
     }
 
-    if (sidebarOverlay) {
-        sidebarOverlay.addEventListener("click", closeSidebar);
+    if (mobileSidebar) {
+        // Esc, closedby="any" and close() all end here, so sync the triggers once.
+        mobileSidebar.addEventListener("close", () => setSidebarExpanded(false));
+
+        // Light-dismiss fallback for browsers without <dialog closedby> (Safari).
+        if (!("closedBy" in HTMLDialogElement.prototype)) {
+            mobileSidebar.addEventListener("click", event => {
+                if (event.target !== mobileSidebar) return;
+
+                const rect = mobileSidebar.getBoundingClientRect();
+                const inside = rect.top <= event.clientY && event.clientY <= rect.bottom &&
+                    rect.left <= event.clientX && event.clientX <= rect.right;
+
+                if (!inside) closeSidebar();
+            });
+        }
     }
 
     if (scheduleView) {
@@ -1573,12 +1595,6 @@ function bindEvents() {
 
     document.addEventListener("visibilitychange", () => {
         if (!document.hidden) refreshLiveViews();
-    });
-
-    document.addEventListener("keydown", event => {
-        if (event.key === "Escape") {
-            closeSidebar();
-        }
     });
 }
 

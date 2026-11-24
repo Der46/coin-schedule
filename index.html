@@ -24,14 +24,17 @@
 </head>
 
 <body>
-    <button id="mobileMenuBtn" class="mobile-menu-btn" type="button" data-i18n="toolButton">
+    <button id="mobileMenuBtn" class="mobile-menu-btn" type="button" data-i18n="toolButton"
+        aria-haspopup="dialog" aria-controls="mobileSidebar" aria-expanded="false">
         ☰ 工具
     </button>
 
-    <aside id="mobileSidebar" class="mobile-sidebar">
+    <!-- Native modal dialog: focus trap, inert page, Esc and focus restore come from the browser. -->
+    <dialog id="mobileSidebar" class="mobile-sidebar" closedby="any" aria-labelledby="toolLinksHeading">
         <div class="mobile-sidebar-header">
-            <strong data-i18n="toolLinksTitle">工具連結</strong>
-            <button id="mobileSidebarClose" class="mobile-sidebar-close" type="button">×</button>
+            <strong id="toolLinksHeading" data-i18n="toolLinksTitle">工具連結</strong>
+            <button id="mobileSidebarClose" class="mobile-sidebar-close" type="button"
+                aria-label="關閉" data-i18n-aria-label="close" autofocus>×</button>
         </div>
 
         <nav class="mobile-tool-nav">
@@ -91,9 +94,7 @@
                 <span data-i18n="toolMagicLand">魔法王國</span>
             </a>
         </nav>
-    </aside>
-
-    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+    </dialog>
 
     <main class="app">
         <section class="hero">
@@ -114,7 +115,8 @@
                     ⬇️ 安裝APP
                 </button>
 
-                <button id="desktopToolBtn" class="top-tool-btn" type="button" data-i18n="toolLinksButton">
+                <button id="desktopToolBtn" class="top-tool-btn" type="button" data-i18n="toolLinksButton"
+                    aria-haspopup="dialog" aria-controls="mobileSidebar" aria-expanded="false">
                     ☰ 工具連結
                 </button>
             </div>
@@ -229,7 +231,7 @@
 
     <dialog id="calDialog" class="cal-dialog" aria-labelledby="calDialogTitle"></dialog>
 
-    <div id="toast" class="toast"></div>
+    <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 </body>
 
 </html>

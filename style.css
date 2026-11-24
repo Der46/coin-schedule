@@ -55,9 +55,6 @@ body {
     outline-offset: 2px;
 }
 
-body.sidebar-open {
-    overflow: hidden;
-}
 
 button,
 select {
@@ -1468,23 +1465,52 @@ select {
     cursor: pointer;
 }
 
+/* Tool drawer = modal <dialog> pinned to the right edge.
+   Reset the UA dialog box, then slide in with @starting-style. */
 .mobile-sidebar {
     position: fixed;
-    top: 0;
-    right: 0;
-    z-index: 10000;
+    inset: 0 0 0 auto;
     width: min(84vw, 360px);
-    height: 100vh;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    margin: 0;
     padding: 18px;
     overflow-y: auto;
+    overscroll-behavior: contain;
+    color: var(--text);
     background: #fff;
+    border: none;
     box-shadow: -18px 0 40px rgba(15, 23, 42, 0.18);
     transform: translateX(105%);
-    transition: transform 0.22s ease;
+    transition-property: transform, overlay, display;
+    transition-duration: 0.22s;
+    transition-timing-function: ease;
+    transition-behavior: allow-discrete;
 }
 
-.mobile-sidebar.show {
+.mobile-sidebar[open] {
     transform: translateX(0);
+}
+
+@starting-style {
+    .mobile-sidebar[open] {
+        transform: translateX(105%);
+    }
+}
+
+/* overflow: hidden makes ::backdrop a scroll container so overscroll-behavior
+   keeps swipes on the backdrop from scrolling the page underneath. */
+.mobile-sidebar::backdrop {
+    overflow: hidden;
+    overscroll-behavior: contain;
+    background: rgba(15, 23, 42, 0.42);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .mobile-sidebar {
+        transition-duration: 0s;
+    }
 }
 
 .mobile-sidebar-header {
@@ -1562,17 +1588,6 @@ select {
     font-weight: 950;
 }
 
-.sidebar-overlay {
-    position: fixed;
-    z-index: 9998;
-    inset: 0;
-    display: none;
-    background: rgba(15, 23, 42, 0.42);
-}
-
-.sidebar-overlay.show {
-    display: block;
-}
 
 .toast {
     position: fixed;
@@ -1768,7 +1783,8 @@ select {
         flex-wrap: nowrap;
         width: 100%;
         overflow-x: auto;
-        scrollbar-width: none;
+        /* Keep the scrollbar so it is clear more filters are off-screen. */
+        padding-bottom: 4px;
     }
 
     .filter-chip {
